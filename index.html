@@ -40,6 +40,7 @@
   html[data-theme="light"] .badge.b-doing{background:#e3f0fb;color:#1c6fb8}
   html[data-theme="light"] .badge.b-review{background:#efe8fb;color:#6f42c1}
   html[data-theme="light"] .badge.b-done{background:#e2f6ec;color:#1a7a50}
+  html[data-theme="light"] .role-badge.rb-admin{background:#fcefcf;color:#8a5a00}
   html[data-theme="light"] .role-badge.rb-tp{background:#efe6fb;color:#6a3db0}
   html[data-theme="light"] .role-badge.rb-pho{background:#fceadd;color:#b45716}
   html[data-theme="light"] .role-badge.rb-tt{background:#dcf0fb;color:#0d6a95}
@@ -90,7 +91,7 @@
   .userbox{margin-top:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
   .userbox .nm{font-weight:700;font-size:13px}.userbox .rl{font-size:11px;color:var(--muted);margin-top:2px}
   .role-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;margin-top:6px}
-  .rb-tp{background:#3a1f5c;color:#d4b3ff}.rb-pho{background:#4a2a1a;color:#ffc199}.rb-tt{background:#0e3a4f;color:#7fd6ff}.rb-tro{background:#123a2a;color:#7fe0b0}.rb-nv{background:#2a3550;color:#b9c6e6}
+  .rb-admin{background:#4a3410;color:#ffcf6b}.rb-tp{background:#3a1f5c;color:#d4b3ff}.rb-pho{background:#4a2a1a;color:#ffc199}.rb-tt{background:#0e3a4f;color:#7fd6ff}.rb-tro{background:#123a2a;color:#7fe0b0}.rb-nv{background:#2a3550;color:#b9c6e6}
   /* icon buttons + notifications */
   .iconbtn{width:38px;height:38px;border-radius:10px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;font-size:17px;position:relative;flex-shrink:0}
   .iconbtn:hover{border-color:var(--accent)}
@@ -271,7 +272,8 @@
       <div class="nm" id="uName">—</div>
       <div class="rl" id="uTeam">—</div>
       <div id="uRole"></div>
-      <button class="btn sm full" id="btnLogout" style="margin-top:10px">Đăng xuất</button>
+      <button class="btn sm full" id="btnChangePass" style="margin-top:10px">🔑 Đổi mật khẩu</button>
+      <button class="btn sm full" id="btnLogout" style="margin-top:6px">Đăng xuất</button>
     </div>
   </aside>
 
@@ -397,8 +399,25 @@
       <div class="field"><label>Tham gia các tổ (tích chọn; ★ = tổ trưởng tổ đó)</label>
         <div id="smTeams" style="display:flex;flex-direction:column;gap:7px;margin-top:4px"></div>
       </div>
+      <div class="field" id="smResetWrap" style="display:none;border-top:1px solid var(--line);padding-top:14px">
+        <label>🔑 Đặt lại mật khẩu cho người này</label>
+        <div style="display:flex;gap:8px"><input id="smNewPass" type="text" placeholder="Mật khẩu mới (≥6 ký tự)" style="flex:1"><button class="btn" id="smResetPass" style="white-space:nowrap">Đặt lại</button></div>
+        <p style="color:var(--muted2);font-size:12px;margin-top:5px">Cần đã triển khai Edge Function "reset-password". Nhớ báo mật khẩu mới cho họ.</p>
+      </div>
     </div>
     <div class="modal-f"><button class="btn ghost" id="smCancel">Hủy</button><button class="btn primary" id="smSave">Lưu</button></div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="overlay" id="passModal">
+  <div class="modal sm">
+    <div class="modal-h"><h3>Đổi mật khẩu của tôi</h3><button class="x" id="pwClose">✕</button></div>
+    <div class="modal-b">
+      <div class="field"><label>Mật khẩu mới</label><input type="password" id="pwNew" placeholder="Tối thiểu 6 ký tự"></div>
+      <div class="field"><label>Nhập lại mật khẩu mới</label><input type="password" id="pwNew2" placeholder="Nhập lại"></div>
+    </div>
+    <div class="modal-f"><button class="btn ghost" id="pwCancel">Hủy</button><button class="btn primary" id="pwSave">Lưu mật khẩu</button></div>
   </div>
 </div>
 
@@ -458,7 +477,7 @@ const AV=['#3b82f6','#31c48d','#f5a524','#a878ff','#33c9dc','#f2506e','#ff8c42',
 
 const STATUS={todo:{label:'Cần làm',color:'#7c8bb0',cls:'b-todo'},doing:{label:'Đang làm',color:'#3b82f6',cls:'b-doing'},review:{label:'Đang duyệt',color:'#a878ff',cls:'b-review'},done:{label:'Hoàn thành',color:'#31c48d',cls:'b-done'}};
 const PRI={cao:{label:'Cao',cls:'pri-cao'},trung:{label:'Trung bình',cls:'pri-trung'},thap:{label:'Thấp',cls:'pri-thap'}};
-const ROLE={truong_phong:{label:'Trưởng phòng',cls:'rb-tp'},pho_truong_phong:{label:'Phó trưởng phòng',cls:'rb-pho'},tro_ly:{label:'Trợ lý LĐ phòng',cls:'rb-tro'},to_truong:{label:'Tổ trưởng',cls:'rb-tt'},nhan_vien:{label:'Nhân viên',cls:'rb-nv'}};
+const ROLE={admin:{label:'Quản trị hệ thống',cls:'rb-admin'},truong_phong:{label:'Trưởng phòng',cls:'rb-tp'},pho_truong_phong:{label:'Phó trưởng phòng',cls:'rb-pho'},tro_ly:{label:'Trợ lý LĐ phòng',cls:'rb-tro'},to_truong:{label:'Tổ trưởng',cls:'rb-tt'},nhan_vien:{label:'Nhân viên',cls:'rb-nv'}};
 
 /* ================= Helpers ================= */
 let toastT;
@@ -473,7 +492,7 @@ function project(id){return projects.find(p=>p.id===id);}
 function collabIdsOf(taskId){return taskCollabs.filter(c=>c.task_id===taskId).map(c=>c.profile_id);}
 function teamIdsOf(pid){return memberTeams.filter(x=>x.profile_id===pid).map(x=>x.team_id);}
 function leadIdsOf(pid){return memberTeams.filter(x=>x.profile_id===pid&&x.is_lead).map(x=>x.team_id);}
-function roleLabel(m){if(m.role==='truong_phong')return ROLE.truong_phong;if(m.role==='pho_truong_phong')return ROLE.pho_truong_phong;if(m.role==='tro_ly')return ROLE.tro_ly;if(leadIdsOf(m.id).length)return ROLE.to_truong;return ROLE.nhan_vien;}
+function roleLabel(m){if(m.role==='admin')return ROLE.admin;if(m.role==='truong_phong')return ROLE.truong_phong;if(m.role==='pho_truong_phong')return ROLE.pho_truong_phong;if(m.role==='tro_ly')return ROLE.tro_ly;if(leadIdsOf(m.id).length)return ROLE.to_truong;return ROLE.nhan_vien;}
 function teamsChips(pid){const ids=teamIdsOf(pid);if(!ids.length)return '<span style="color:var(--muted2)">Chưa phân tổ</span>';return ids.map(id=>{const lead=leadIdsOf(pid).includes(id);return `<span class="chip team">${lead?'★ ':''}${esc((team(id)?.name||'').replace('Tổ ',''))}</span>`;}).join(' ');}
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function daysLeft(d){if(!d)return null;return Math.round((new Date(d)-new Date(todayStr()))/86400000);}
@@ -484,9 +503,10 @@ function fmtSize(b){if(!b)return '';if(b<1024)return b+' B';if(b<1048576)return 
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 /* Permissions (mirror RLS, for UI) */
-function isManager(){return me&&(me.role==='truong_phong'||me.role==='pho_truong_phong');}
-function canManageTask(){return me&&(me.role==='truong_phong'||me.role==='pho_truong_phong'||me.role==='tro_ly');}
-function isAdmin(){return isManager();} // đổi vai trò cấp phòng: chỉ lãnh đạo
+function isSysAdmin(){return me&&me.role==='admin';} // Quản trị hệ thống — toàn quyền tối cao
+function isManager(){return me&&(me.role==='admin'||me.role==='truong_phong'||me.role==='pho_truong_phong');}
+function canManageTask(){return me&&(me.role==='admin'||me.role==='truong_phong'||me.role==='pho_truong_phong'||me.role==='tro_ly');}
+function isAdmin(){return isManager();} // đổi vai trò cấp phòng: lãnh đạo
 function canManageStaff(){return canManageTask();} // vào Nhân sự, thêm nhân viên, điều phối tổ: lãnh đạo + trợ lý
 function myLeadIds(){return me?me.leadIds||[]:[];}
 function canCreate(){return me&&(canManageTask()||myLeadIds().length>0);}
@@ -531,10 +551,17 @@ $('#aSubmit').onclick=async()=>{
       if(error)throw error;
       toast('Đăng ký thành công! Đang đăng nhập...','ok');
     }
-    const {error:e2}=await sb.auth.signInWithPassword({email,password:pass});
+    const {data:sd,error:e2}=await sb.auth.signInWithPassword({email,password:pass});
     if(e2)throw e2;
+    session=sd.session;
+    $('#loading').classList.remove('hidden');
+    await loadMe();            // <-- tải dữ liệu & vào thẳng giao diện sau khi đăng nhập
   }catch(err){
-    $('#authErr').textContent='Lỗi: '+(err.message||err);$('#authErr').style.display='block';
+    $('#loading').classList.add('hidden');
+    let m=err.message||String(err);
+    if(/invalid login/i.test(m))m='Sai email hoặc mật khẩu';
+    else if(/email not confirmed/i.test(m))m='Email chưa được xác nhận — hãy tắt "Confirm email" trong Supabase';
+    $('#authErr').textContent='Lỗi: '+m;$('#authErr').style.display='block';
     $('#aSubmit').disabled=false;$('#aSubmit').textContent=signupMode?'Đăng ký':'Đăng nhập';
   }
 };
@@ -927,8 +954,12 @@ window.delAtt=async(id,path)=>{
 let staffId=null;
 function openStaff(id){
   if(!canManageStaff())return;staffId=id;const m=member(id);
-  $('#smName').value=m.full_name||'';$('#smRole').value=m.role||'nhan_vien';
-  $('#smRole').disabled=!isManager(); // trợ lý không đổi được vai trò cấp phòng
+  $('#smName').value=m.full_name||'';
+  const rOpts=[['nhan_vien','Nhân viên'],['tro_ly','Trợ lý LĐ phòng'],['pho_truong_phong','Phó trưởng phòng'],['truong_phong','Trưởng phòng']];
+  if(isSysAdmin()||m.role==='admin')rOpts.push(['admin','Quản trị hệ thống']);
+  $('#smRole').innerHTML=rOpts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  $('#smRole').value=m.role||'nhan_vien';
+  $('#smRole').disabled=!isManager()||(m.role==='admin'&&!isSysAdmin()); // trợ lý không đổi vai trò; chỉ admin đụng được tài khoản admin
   $('#smPos').value=m.position||'';
   const tids=teamIdsOf(id),lids=leadIdsOf(id);
   $('#smTeams').innerHTML=teams.map(t=>`<div class="st-item" style="background:var(--bg2)">
@@ -936,6 +967,8 @@ function openStaff(id){
       <span class="txt">${esc(t.name)}</span>
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><input type="checkbox" class="smLead" data-tid="${t.id}" ${lids.includes(t.id)?'checked':''}> Tổ trưởng</label>
     </div>`).join('');
+  $('#smResetWrap').style.display=(isManager()&&(m.role!=='admin'||isSysAdmin()))?'block':'none';
+  $('#smNewPass').value='';
   $('#staffModal').classList.add('show');
 }
 window.openStaff=openStaff;
@@ -963,8 +996,8 @@ $('#smClose').onclick=$('#smCancel').onclick=()=>$('#staffModal').classList.remo
 function openAddUser(){
   if(!canManageStaff())return;
   $('#auName').value='';$('#auEmail').value='';$('#auPos').value='';$('#auPass').value='';
-  const opts=isManager()?['nhan_vien','tro_ly','pho_truong_phong','truong_phong']:['nhan_vien'];
-  const L={nhan_vien:'Nhân viên',tro_ly:'Trợ lý LĐ phòng',pho_truong_phong:'Phó trưởng phòng',truong_phong:'Trưởng phòng'};
+  const opts=isSysAdmin()?['nhan_vien','tro_ly','pho_truong_phong','truong_phong','admin']:(isManager()?['nhan_vien','tro_ly','pho_truong_phong','truong_phong']:['nhan_vien']);
+  const L={nhan_vien:'Nhân viên',tro_ly:'Trợ lý LĐ phòng',pho_truong_phong:'Phó trưởng phòng',truong_phong:'Trưởng phòng',admin:'Quản trị hệ thống'};
   $('#auRole').innerHTML=opts.map(o=>`<option value="${o}">${L[o]}</option>`).join('');
   $('#auRole').disabled=!isManager();
   $('#auTeams').innerHTML=teams.map(t=>`<div class="st-item" style="background:var(--bg2)">
@@ -995,6 +1028,35 @@ $('#btnAddUser').onclick=openAddUser;
 $('#auClose').onclick=$('#auCancel').onclick=()=>$('#addUserModal').classList.remove('show');
 $('#addUserModal').onclick=e=>{if(e.target.id==='addUserModal')$('#addUserModal').classList.remove('show');};
 $('#auGen').onclick=genPass;$('#auSave').onclick=submitAddUser;
+
+/* ===== Đổi mật khẩu của tôi ===== */
+$('#btnChangePass').onclick=()=>{$('#pwNew').value='';$('#pwNew2').value='';$('#passModal').classList.add('show');};
+$('#pwClose').onclick=$('#pwCancel').onclick=()=>$('#passModal').classList.remove('show');
+$('#passModal').onclick=e=>{if(e.target.id==='passModal')$('#passModal').classList.remove('show');};
+$('#pwSave').onclick=async()=>{
+  const a=$('#pwNew').value,b=$('#pwNew2').value;
+  if(a.length<6){toast('Mật khẩu tối thiểu 6 ký tự','err');return;}
+  if(a!==b){toast('Hai mật khẩu nhập lại không khớp','err');return;}
+  $('#pwSave').disabled=true;
+  try{const {error}=await sb.auth.updateUser({password:a});if(error)throw error;
+    $('#passModal').classList.remove('show');toast('Đã đổi mật khẩu thành công','ok');
+  }catch(err){toast('Lỗi: '+(err.message||err),'err');}
+  $('#pwSave').disabled=false;
+};
+
+/* ===== Admin đặt lại mật khẩu cho nhân viên ===== */
+$('#smResetPass').onclick=async()=>{
+  const np=$('#smNewPass').value.trim();
+  if(np.length<6){toast('Mật khẩu tối thiểu 6 ký tự','err');return;}
+  $('#smResetPass').disabled=true;
+  try{
+    const {data,error}=await sb.functions.invoke('reset-password',{body:{user_id:staffId,password:np}});
+    if(error){let m=error.message;try{const c=await error.context.json();if(c&&c.error)m=c.error;}catch(e){}throw new Error(m);}
+    if(data&&data.error)throw new Error(data.error);
+    toast('Đã đặt lại mật khẩu','ok');$('#smNewPass').value='';
+  }catch(err){toast('Lỗi: '+(err.message||err),'err');}
+  $('#smResetPass').disabled=false;
+};
 
 /* ================= Giao diện sáng/tối ================= */
 function applyThemeIcon(){$('#btnTheme').textContent=(document.documentElement.dataset.theme==='light')?'🌙':'☀️';}
@@ -1068,7 +1130,7 @@ $('#calPrev').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCalendar
 $('#calNext').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCalendar();};
 $('#calToday').onclick=()=>{calDate=new Date();renderCalendar();};
 $('#subInput')&&($('#subInput').onkeydown=e=>{if(e.key==='Enter')$('#subAdd').click();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');}});
 
 /* ================= Start ================= */
 async function start(){
