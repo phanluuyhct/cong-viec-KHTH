@@ -312,6 +312,7 @@
         <div class="kanban" id="kanban"></div>
       </section>
       <section class="view" id="view-tasks">
+        <div id="taskFilterBar" style="margin-bottom:10px;display:none"></div>
         <div class="card" style="padding:0;overflow:auto">
           <table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>Loại</th><th>Phụ trách</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody id="taskBody"></tbody></table>
         </div>
@@ -389,6 +390,7 @@
         <div class="addrow"><input type="file" id="attFile" style="flex:1"><button class="btn primary" id="attUpload">Tải lên</button></div>
         <p style="color:var(--muted2);font-size:12px;margin-top:8px">Tệp lưu an toàn trên máy chủ, chỉ người trong phòng xem được.</p>
       </div>
+      <div id="newTaskHint" style="display:none;background:var(--bg2);border:1px dashed var(--line2);border-radius:10px;padding:12px 14px;color:var(--muted);font-size:13px">💡 Bấm <b>Lưu</b> để tạo nhiệm vụ trước, sau đó mở lại để thêm <b>Ghi chú / Subtask</b>, <b>Trao đổi</b> và <b>Tệp đính kèm</b>.</div>
     </div>
     <div class="modal-f">
       <button class="btn danger" id="tmDelete" style="margin-right:auto">🗑 Xóa</button>
@@ -665,9 +667,33 @@ function fillFilters(){
   fp.innerHTML='<option value="">Tất cả dự án</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   ft.value=pv;fm.value=mv;fp.value=ppv;
 }
+let drillFilter=null; // lọc nhanh khi bấm vào biểu đồ ở Tổng quan
 function filtered(){
   const q=($('#search').value||'').toLowerCase(), ft=$('#filterTeam').value, fm=$('#filterMember').value, fp=$('#filterProject').value;
-  return tasks.filter(t=>(!q||(t.title||'').toLowerCase().includes(q))&&(!ft||String(t.team_id)===ft)&&(!fm||t.assignee_id===fm||collabIdsOf(t.id).includes(fm))&&(!fp||String(t.project_id)===fp));
+  let list=tasks.filter(t=>(!q||(t.title||'').toLowerCase().includes(q))&&(!ft||String(t.team_id)===ft)&&(!fm||t.assignee_id===fm||collabIdsOf(t.id).includes(fm))&&(!fp||String(t.project_id)===fp));
+  if(drillFilter){
+    if(drillFilter.type==='status')list=list.filter(t=>t.status===drillFilter.value);
+    else if(drillFilter.type==='priority')list=list.filter(t=>t.priority===drillFilter.value);
+    else if(drillFilter.type==='overdue')list=list.filter(isOverdue);
+    else if(drillFilter.type==='soon')list=list.filter(isSoon);
+  }
+  return list;
+}
+function clearDrillDropdowns(){$('#filterTeam').value='';$('#filterMember').value='';$('#filterProject').value='';$('#search').value='';}
+function drillStatus(s){drillFilter={type:'status',value:s,label:'Trạng thái: '+STATUS[s].label};clearDrillDropdowns();renderAll();nav('tasks');}
+function drillPriority(p){drillFilter={type:'priority',value:p,label:'Ưu tiên: '+PRI[p].label};clearDrillDropdowns();renderAll();nav('tasks');}
+function drillOverdue(){drillFilter={type:'overdue',label:'Quá hạn'};clearDrillDropdowns();renderAll();nav('tasks');}
+function drillSoon(){drillFilter={type:'soon',label:'Sắp tới hạn'};clearDrillDropdowns();renderAll();nav('tasks');}
+function drillClear(){drillFilter=null;clearDrillDropdowns();renderAll();}
+window.drillStatus=drillStatus;window.drillPriority=drillPriority;window.drillOverdue=drillOverdue;window.drillSoon=drillSoon;window.drillClear=drillClear;
+function activeFilterChips(){
+  const parts=[];
+  if(drillFilter)parts.push(drillFilter.label);
+  const ft=$('#filterTeam').value; if(ft)parts.push('Tổ: '+(team(+ft)?.name||''));
+  const fm=$('#filterMember').value; if(fm)parts.push('Người: '+(member(fm)?.full_name||''));
+  const fp=$('#filterProject').value; if(fp)parts.push('Dự án: '+(project(+fp)?.name||''));
+  const q=$('#search').value; if(q)parts.push('Tìm: “'+q+'”');
+  return parts;
 }
 
 /* ================= Render ================= */
@@ -677,7 +703,7 @@ function barChart(title,rows){
   const max=Math.max(1,...rows.map(r=>r.count)), total=rows.reduce((a,b)=>a+b.count,0);
   return `<div class="card"><div class="section-title" style="margin:0 0 2px">${title}</div>
     <div style="display:flex;align-items:flex-end;gap:14px;height:168px;padding:12px 4px 0">
-    ${rows.map(r=>{const pct=total?Math.round(r.count/total*100):0;return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%" title="${esc(r.label)}: ${r.count} (${pct}%)">
+    ${rows.map(r=>{const pct=total?Math.round(r.count/total*100):0;const clk=r.click?`onclick="${r.click}" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer"`:`style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%"`;return `<div ${clk} title="${esc(r.label)}: ${r.count} (${pct}%)${r.click?' — bấm để xem':''}">
       <div style="font-weight:800;font-size:15px;margin-bottom:5px;color:var(--txt)">${r.count}</div>
       <div style="width:72%;max-width:58px;border-radius:6px 6px 0 0;background:${r.color};height:${r.count/max*100}%;min-height:4px"></div>
       <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.25">${esc(r.label)}</div>
@@ -741,23 +767,23 @@ function renderKPI(){
       <td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;max-width:160px;background:var(--line);border-radius:5px;height:8px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${kScoreColor(pct)}"></div></div>${pct}%</div></td></tr>`;
   }).join('');
 }
-function drillMemberKpi(id){$('#filterMember').value=id;$('#filterTeam').value='';$('#filterProject').value='';renderAll();nav('tasks');}
+function drillMemberKpi(id){drillFilter=null;$('#filterMember').value=id;$('#filterTeam').value='';$('#filterProject').value='';renderAll();nav('tasks');}
 window.drillMemberKpi=drillMemberKpi;
 function renderDashboard(){
   const done=tasks.filter(t=>t.status==='done').length;
   const od=tasks.filter(isOverdue).length, soon=tasks.filter(isSoon).length, doing=tasks.filter(t=>t.status==='doing').length;
   const rate=tasks.length?Math.round(done/tasks.length*100):0;
   $('#statRow').innerHTML=[
-    {k:'Tổng nhiệm vụ',v:tasks.length,s:teams.length+' tổ · '+members.length+' nhân sự'},
-    {k:'Hoàn thành',v:done,s:rate+'% công việc',bar:rate},
-    {k:'Đang thực hiện',v:doing,s:'cần theo dõi'},
-    {k:'Quá hạn',v:od,s:soon+' sắp tới hạn'}
-  ].map(x=>`<div class="card stat"><div class="k">${x.k}</div><div class="v">${x.v}</div><div class="sub">${x.s}</div>${x.bar!=null?`<div class="bar"><i style="width:${x.bar}%"></i></div>`:''}</div>`).join('');
+    {k:'Tổng nhiệm vụ',v:tasks.length,s:teams.length+' tổ · '+members.length+' nhân sự',click:'drillClear();nav(\'tasks\')'},
+    {k:'Hoàn thành',v:done,s:rate+'% công việc',bar:rate,click:'drillStatus(\'done\')'},
+    {k:'Đang thực hiện',v:doing,s:'cần theo dõi',click:'drillStatus(\'doing\')'},
+    {k:'Quá hạn',v:od,s:soon+' sắp tới hạn',click:'drillOverdue()'}
+  ].map(x=>`<div class="card stat" ${x.click?`onclick="${x.click}" style="cursor:pointer"`:''}><div class="k">${x.k}</div><div class="v">${x.v}</div><div class="sub">${x.s}</div>${x.bar!=null?`<div class="bar"><i style="width:${x.bar}%"></i></div>`:''}</div>`).join('');
 
-  // Biểu đồ cột: nhãn tên mang thông tin, màu chỉ là phụ (đọc được cả khi mù màu)
-  const statusRows=['todo','doing','review','done'].map(s=>({label:STATUS[s].label,count:tasks.filter(t=>t.status===s).length,color:STATUS[s].color}));
+  // Biểu đồ cột: nhãn tên mang thông tin, màu chỉ là phụ (đọc được cả khi mù màu). Bấm cột để xem nhiệm vụ.
+  const statusRows=['todo','doing','review','done'].map(s=>({label:STATUS[s].label,count:tasks.filter(t=>t.status===s).length,color:STATUS[s].color,click:`drillStatus('${s}')`}));
   const priColor={cao:'#e34948',trung:'#eda100',thap:'#2a78d6'};
-  const priRows=['cao','trung','thap'].map(pp=>({label:PRI[pp].label,count:tasks.filter(t=>t.priority===pp).length,color:priColor[pp]}));
+  const priRows=['cao','trung','thap'].map(pp=>({label:PRI[pp].label,count:tasks.filter(t=>t.priority===pp).length,color:priColor[pp],click:`drillPriority('${pp}')`}));
   $('#dashCharts').innerHTML=barChart('📊 Nhiệm vụ theo trạng thái',statusRows)+barChart('⚡ Nhiệm vụ theo mức ưu tiên',priRows);
 
   $('#teamProgress').innerHTML=teams.map(tm=>{
@@ -812,6 +838,11 @@ function bindDnD(){
   });
 }
 function renderTasks(){
+  const chips=activeFilterChips();
+  const fb=$('#taskFilterBar');
+  if(chips.length){fb.style.display='flex';fb.style.alignItems='center';fb.style.gap='10px';fb.style.flexWrap='wrap';
+    fb.innerHTML=`<span style="color:var(--muted);font-size:13px">Đang lọc:</span>`+chips.map(c=>`<span class="chip" style="background:var(--bg2);color:var(--txt);font-weight:600">${esc(c)}</span>`).join('')+`<button class="btn sm" onclick="drillClear()">✕ Xóa lọc</button>`;
+  }else{fb.style.display='none';fb.innerHTML='';}
   const list=filtered().slice().sort((a,b)=>new Date(a.due_date||'2999')-new Date(b.due_date||'2999'));
   $('#taskBody').innerHTML=list.map(t=>{const m=member(t.assignee_id),o=isOverdue(t),dn=t.status==='done',dl=daysLeft(t.due_date);
     return `<tr class="${o?'row-od':''} ${dn?'row-dn':''}" onclick="openTask(${t.id})" style="cursor:pointer">
@@ -853,7 +884,7 @@ function renderStaff(){
   $('#staffBody').innerHTML=members.map(m=>{const r=roleLabel(m);
     return `<tr onclick="openStaff('${m.id}')" style="cursor:pointer"><td class="tc">${ava(m)} ${esc(m.full_name)}</td><td>${esc(m.email||'')}</td><td>${teamsChips(m.id)}</td><td><span class="role-badge ${r.cls}">${r.label}</span></td><td>${esc(m.position||'')}</td></tr>`;}).join('');
 }
-function drillTeam(id){$('#filterTeam').value=id;$('#filterMember').value='';$('#filterProject').value='';renderAll();nav('tasks');toast('Lọc theo tổ','ok');}
+function drillTeam(id){drillFilter=null;$('#filterTeam').value=id;$('#filterMember').value='';$('#filterProject').value='';renderAll();nav('tasks');toast('Lọc theo tổ','ok');}
 window.drillTeam=drillTeam;
 function drillProject(id){$('#filterProject').value=id;$('#filterTeam').value='';$('#filterMember').value='';renderAll();nav('tasks');toast('📁 Công việc của dự án: '+(project(id)?.name||''),'ok');}
 window.drillProject=drillProject;
@@ -955,8 +986,10 @@ async function openTask(id){
   fillTaskSelects(t?.team_id);editId=id;
   $('#tmTitle').textContent=t?'Chi tiết nhiệm vụ':'Nhiệm vụ mới';
   $('#detailTabs').style.display=t?'flex':'none';
-  $$('.tabpane').forEach(p=>p.classList.toggle('active',p.dataset.pane==='sub'));
+  // Việc mới chưa lưu: ẩn các ô Ghi chú/Trao đổi/Tệp (cần có nhiệm vụ đã lưu mới thêm được), hiện gợi ý
+  $$('.tabpane').forEach(p=>p.classList.toggle('active',!!t&&p.dataset.pane==='sub'));
   $$('.tab').forEach(tb=>tb.classList.toggle('active',tb.dataset.tab==='sub'));
+  $('#newTaskHint').style.display=t?'none':'block';
   $('#fTitle').value=t?.title||'';$('#fDesc').value=t?.description||'';
   $('#fTeam').value=t?.team_id||(myLeadIds()[0]||me.teamIds?.[0]||teams[0]?.id||'');$('#fCat').value=t?.category||'';
   $('#fProject').value=t?.project_id||'';
@@ -990,15 +1023,17 @@ async function saveTask(){
     assignee_id:$('#fAssignee').value||null,status:st,priority:$('#fPriority').value,due_date:$('#fDue').value||null,progress:prog};
   $('#tmSave').disabled=true;
   try{
-    let taskId=editId;
+    const wasNew=!editId;let taskId=editId;
     if(editId){const {error}=await sb.from('tasks').update(obj).eq('id',editId);if(error)throw error;}
     else{obj.creator_id=me.id;const {data,error}=await sb.from('tasks').insert(obj).select().single();if(error)throw error;taskId=data.id;}
     // Đồng bộ người phối hợp (bỏ người đã là chịu trách nhiệm chính)
     const chosen=[...$$('.collabChk')].filter(c=>c.checked).map(c=>c.value).filter(id=>id!==obj.assignee_id);
     await sb.from('task_collaborators').delete().eq('task_id',taskId);
     if(chosen.length){const {error:ce}=await sb.from('task_collaborators').insert(chosen.map(pid=>({task_id:taskId,profile_id:pid})));if(ce)throw ce;}
-    toast(editId?'Đã cập nhật':'Đã tạo nhiệm vụ','ok');
-    await reloadTasks();closeTask();
+    toast(wasNew?'Đã tạo nhiệm vụ — có thể thêm ghi chú, trao đổi, tệp':'Đã cập nhật','ok');
+    await reloadTasks();
+    // Việc mới: mở lại ngay ở chế độ chi tiết để thêm Ghi chú / Trao đổi / Tệp; sửa việc cũ thì đóng
+    if(wasNew){openTask(taskId);}else{closeTask();}
   }catch(err){toast('Lỗi: '+(err.message||err),'err');}
   $('#tmSave').disabled=false;
 }
