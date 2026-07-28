@@ -249,6 +249,8 @@
     <p class="sub">Phòng Kế hoạch tổng hợp — Bệnh viện 30-4</p>
     <div class="err-msg" id="authErr"></div>
     <div class="field" id="nameField" style="display:none"><label>Họ và tên</label><input id="aName" placeholder="Nguyễn Văn A"></div>
+    <div class="field" id="roleField" style="display:none"><label>Chức vụ</label><select id="aRole"><option value="nhan_vien">Nhân viên</option><option value="pho_truong_phong">Phó trưởng phòng</option><option value="truong_phong">Trưởng phòng</option></select></div>
+    <div class="field" id="teamField" style="display:none"><label>Tổ tham gia (nếu biết)</label><select id="aTeam"><option value="">— Chưa chọn —</option></select></div>
     <div class="field"><label>Email</label><input id="aEmail" type="email" placeholder="email@benhvien.vn"></div>
     <div class="field"><label>Mật khẩu</label><input id="aPass" type="password" placeholder="Tối thiểu 6 ký tự"></div>
     <button class="btn primary full" id="aSubmit">Đăng nhập</button>
@@ -333,7 +335,7 @@
       </section>
       <section class="view" id="view-staff">
         <div style="display:flex;align-items:center;margin-bottom:12px"><div class="legend" style="margin:0"><span>Trưởng/Phó phòng & Trợ lý thêm nhân viên và điều phối tổ; chỉ Trưởng/Phó phòng đổi được vai trò.</span></div><button class="btn primary" id="btnAddUser" style="margin-left:auto">＋ Thêm nhân viên</button></div>
-        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Họ tên</th><th>Email</th><th>Tổ</th><th>Vai trò</th><th>Chức vụ</th></tr></thead><tbody id="staffBody"></tbody></table></div>
+        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Họ tên</th><th>Email</th><th>Tổ</th><th>Chức vụ</th><th>Vai trò / Chức danh</th></tr></thead><tbody id="staffBody"></tbody></table></div>
       </section>
     </div>
   </div>
@@ -403,8 +405,8 @@
     <div class="modal-b">
       <div class="field"><label>Họ tên</label><input id="smName"></div>
       <div class="two">
-        <div class="field"><label>Vai trò cấp phòng</label><select id="smRole"><option value="nhan_vien">Nhân viên</option><option value="tro_ly">Trợ lý LĐ phòng (giao/sửa/xóa việc)</option><option value="pho_truong_phong">Phó trưởng phòng</option><option value="truong_phong">Trưởng phòng (toàn quyền)</option></select></div>
-        <div class="field"><label>Chức vụ / vị trí</label><input id="smPos" placeholder="VD: Bác sĩ, Điều dưỡng..."></div>
+        <div class="field"><label>Chức vụ (cấp phòng)</label><select id="smRole"><option value="nhan_vien">Nhân viên</option><option value="tro_ly">Trợ lý LĐ phòng (giao/sửa/xóa việc)</option><option value="pho_truong_phong">Phó trưởng phòng</option><option value="truong_phong">Trưởng phòng (toàn quyền)</option></select></div>
+        <div class="field"><label>Vai trò / Chức danh</label><input id="smPos" placeholder="VD: Bác sĩ, Điều dưỡng..."></div>
       </div>
       <div class="field"><label>Tham gia các tổ (tích chọn; ★ = tổ trưởng tổ đó)</label>
         <div id="smTeams" style="display:flex;flex-direction:column;gap:7px;margin-top:4px"></div>
@@ -439,13 +441,13 @@
       <div class="field"><label>Họ và tên</label><input id="auName" placeholder="Nguyễn Văn A"></div>
       <div class="two">
         <div class="field"><label>Email đăng nhập</label><input id="auEmail" type="email" placeholder="email@benhvien.vn"></div>
-        <div class="field"><label>Chức vụ / vị trí</label><input id="auPos" placeholder="VD: Điều dưỡng"></div>
+        <div class="field"><label>Vai trò / Chức danh</label><input id="auPos" placeholder="VD: Điều dưỡng"></div>
       </div>
       <div class="field"><label>Mật khẩu</label>
         <div style="display:flex;gap:8px"><input id="auPass" placeholder="Tối thiểu 6 ký tự" style="flex:1">
         <button class="btn" id="auGen" style="white-space:nowrap">🎲 Tạo mật khẩu</button></div>
       </div>
-      <div class="field"><label>Vai trò cấp phòng</label><select id="auRole"></select></div>
+      <div class="field"><label>Chức vụ (cấp phòng)</label><select id="auRole"></select></div>
       <div class="field"><label>Tham gia các tổ (★ = tổ trưởng)</label>
         <div id="auTeams" style="display:flex;flex-direction:column;gap:7px;margin-top:4px;max-height:180px;overflow:auto"></div>
       </div>
@@ -468,6 +470,18 @@
       </div>
     </div>
     <div class="modal-f"><button class="btn danger" id="pmDelete" style="margin-right:auto">🗑 Xóa</button><button class="btn ghost" id="pmCancel">Hủy</button><button class="btn primary" id="pmSave">Lưu</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="teamModal">
+  <div class="modal sm">
+    <div class="modal-h"><h3 id="tmoTitle">Tổ mới</h3><button class="x" id="tmoClose">✕</button></div>
+    <div class="modal-b">
+      <div class="field"><label>Tên tổ</label><input id="toName" placeholder="VD: Bệnh án điện tử"></div>
+      <div class="field"><label>Mô tả</label><textarea id="toDesc" placeholder="Nội dung công việc của tổ..."></textarea></div>
+      <div class="field"><label>Thứ tự hiển thị</label><input id="toOrder" type="number" placeholder="VD: 5"></div>
+    </div>
+    <div class="modal-f"><button class="btn danger" id="tmoDelete" style="margin-right:auto">🗑 Xóa</button><button class="btn ghost" id="tmoCancel">Hủy</button><button class="btn primary" id="tmoSave">Lưu</button></div>
   </div>
 </div>
 
@@ -542,13 +556,21 @@ $('#cfgSave').onclick=()=>{
 };
 $('#cfgReset').onclick=()=>{localStorage.removeItem(CFG_KEY);location.reload();};
 
-let signupMode=false;
-$('#toSignup').onclick=()=>{signupMode=!signupMode;
+let signupMode=false, authTeamsLoaded=false;
+async function loadAuthTeams(){
+  if(authTeamsLoaded)return;
+  try{const {data}=await sb.from('teams').select('id,name').order('sort_order');
+    if(data&&data.length){$('#aTeam').innerHTML='<option value="">— Chưa chọn —</option>'+data.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');authTeamsLoaded=true;}
+  }catch(e){/* bỏ qua nếu chưa cấp quyền đọc tổ cho khách */}
+}
+function toggleSignup(){signupMode=!signupMode;
   $('#authTitle').textContent=signupMode?'Đăng ký tài khoản':'Đăng nhập';
-  $('#nameField').style.display=signupMode?'block':'none';
+  ['nameField','roleField','teamField'].forEach(id=>$('#'+id).style.display=signupMode?'block':'none');
   $('#aSubmit').textContent=signupMode?'Đăng ký':'Đăng nhập';
   $('#authSwitch').innerHTML=signupMode?'Đã có tài khoản? <a id="toSignup">Đăng nhập</a>':'Chưa có tài khoản? <a id="toSignup">Đăng ký</a>';
-  $('#toSignup').onclick=arguments.callee;$('#authErr').style.display='none';};
+  $('#toSignup').onclick=toggleSignup;$('#authErr').style.display='none';
+  if(signupMode)loadAuthTeams();}
+$('#toSignup').onclick=toggleSignup;
 
 $('#aSubmit').onclick=async()=>{
   const email=$('#aEmail').value.trim(), pass=$('#aPass').value, name=$('#aName').value.trim();
@@ -558,7 +580,8 @@ $('#aSubmit').onclick=async()=>{
   try{
     if(signupMode){
       if(!name){throw new Error('Nhập họ tên');}
-      const {error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+      const roleSel=$('#aRole').value||'nhan_vien', teamSel=$('#aTeam').value;
+      const {error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,role:roleSel,team_id:teamSel||null}}});
       if(error)throw error;
       toast('Đăng ký thành công! Đang đăng nhập...','ok');
     }
@@ -799,12 +822,14 @@ function renderTasks(){
       <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;}).join('')||'<tr><td colspan="8" class="empty">Không có nhiệm vụ</td></tr>';
 }
 function renderTeams(){
-  $('#teamsView').innerHTML=teams.map(tm=>{
+  const bar=isManager()?`<div style="display:flex;align-items:center;margin-bottom:12px"><div class="legend" style="margin:0"><span>Quản trị & Lãnh đạo phòng có thể thêm, sửa, xóa tổ trực tiếp tại đây.</span></div><button class="btn primary" style="margin-left:auto" onclick="openTeam(null)">＋ Thêm tổ</button></div>`:'';
+  $('#teamsView').innerHTML=bar+teams.map(tm=>{
     const tt=filtered().filter(x=>x.team_id===tm.id);
     const leadIds=memberTeams.filter(x=>x.team_id===tm.id&&x.is_lead).map(x=>x.profile_id);
     const lead=members.find(m=>leadIds.includes(m.id));
     const cnt=memberTeams.filter(x=>x.team_id===tm.id).length;
-    return `<div class="section-title" style="justify-content:space-between"><span>🏥 ${esc(tm.name)}</span>
+    const edit=isManager()?`<button class="btn sm" onclick="event.stopPropagation();openTeam(${tm.id})" title="Sửa tổ">✏️</button>`:'';
+    return `<div class="section-title" style="justify-content:space-between"><span>🏥 ${esc(tm.name)} ${edit}</span>
       <span style="font-weight:400;font-size:12px;color:var(--muted)">${lead?'Tổ trưởng: '+lead.full_name+' · ':''}${cnt} người · ${tt.length} việc</span></div>
       <div class="card" style="padding:0;overflow:auto;margin-bottom:6px">${tt.length?`<table><tbody>${tt.map(t=>{const o=isOverdue(t),dn=t.status==='done';
         return `<tr onclick="openTask(${t.id})" style="cursor:pointer" class="${o?'row-od':''} ${dn?'row-dn':''}"><td class="tc" style="width:40%">${esc(t.title)}</td><td>${esc(t.category||'')}</td><td>${member(t.assignee_id)?.full_name||'—'}</td><td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td><td>${t.due_date?fmtDate(t.due_date):'—'}</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty" style="padding:16px">Chưa có nhiệm vụ trong tổ này</div>'}</div>`;
@@ -883,6 +908,37 @@ async function deleteProject(){
   if(error){toast('Lỗi: '+error.message,'err');return;}
   const {data}=await sb.from('projects').select('*').order('created_at');projects=data||[];
   await reloadTasks();$('#projModal').classList.remove('show');toast('Đã xóa dự án','ok');
+}
+
+/* ================= Team (Tổ) modal ================= */
+let editTeamId=null;
+function openTeam(id){
+  if(!isManager())return;editTeamId=id;const t=id?team(id):null;
+  $('#tmoTitle').textContent=t?'Chỉnh sửa tổ':'Tổ mới';
+  $('#toName').value=t?.name||'';$('#toDesc').value=t?.description||'';
+  $('#toOrder').value=(t?.sort_order??(teams.length+1));
+  $('#tmoDelete').style.display=t?'inline-flex':'none';
+  $('#teamModal').classList.add('show');
+}
+window.openTeam=openTeam;
+async function saveTeam(){
+  const name=$('#toName').value.trim();if(!name){toast('Nhập tên tổ','err');return;}
+  const obj={name,description:$('#toDesc').value.trim(),sort_order:parseInt($('#toOrder').value)||0};
+  try{
+    if(editTeamId){const {error}=await sb.from('teams').update(obj).eq('id',editTeamId);if(error)throw error;}
+    else{const {error}=await sb.from('teams').insert(obj);if(error)throw error;}
+    const {data}=await sb.from('teams').select('*').order('sort_order');teams=data||[];
+    $('#teamModal').classList.remove('show');renderAll();toast('Đã lưu tổ','ok');
+  }catch(err){toast('Lỗi: '+(err.message||err),'err');}
+}
+async function deleteTeam(){
+  if(!editTeamId)return;
+  if(!confirm('Xóa tổ này? Thành viên sẽ được gỡ khỏi tổ và nhiệm vụ của tổ sẽ không còn thuộc tổ nào (không bị xóa việc).'))return;
+  const {error}=await sb.from('teams').delete().eq('id',editTeamId);
+  if(error){toast('Lỗi: '+error.message,'err');return;}
+  const [td,mtd]=await Promise.all([sb.from('teams').select('*').order('sort_order'),sb.from('member_teams').select('*')]);
+  teams=td.data||[];memberTeams=mtd.data||[];
+  await reloadTasks();$('#teamModal').classList.remove('show');toast('Đã xóa tổ','ok');
 }
 
 /* ================= Task modal ================= */
@@ -1212,6 +1268,9 @@ $('#btnNewProject').onclick=()=>openProject(null);
 $('#pmClose').onclick=$('#pmCancel').onclick=()=>$('#projModal').classList.remove('show');
 $('#pmSave').onclick=saveProject;$('#pmDelete').onclick=deleteProject;
 $('#projModal').onclick=e=>{if(e.target.id==='projModal')$('#projModal').classList.remove('show');};
+$('#tmoClose').onclick=$('#tmoCancel').onclick=()=>$('#teamModal').classList.remove('show');
+$('#tmoSave').onclick=saveTeam;$('#tmoDelete').onclick=deleteTeam;
+$('#teamModal').onclick=e=>{if(e.target.id==='teamModal')$('#teamModal').classList.remove('show');};
 $('#tmClose').onclick=$('#tmCancel').onclick=closeTask;
 $('#tmSave').onclick=saveTask;$('#tmDelete').onclick=deleteTask;
 $('#taskModal').onclick=e=>{if(e.target.id==='taskModal')closeTask();};
@@ -1220,7 +1279,7 @@ $('#calPrev').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCalendar
 $('#calNext').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCalendar();};
 $('#calToday').onclick=()=>{calDate=new Date();renderCalendar();};
 $('#subInput')&&($('#subInput').onkeydown=e=>{if(e.key==='Enter')$('#subAdd').click();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');$('#teamModal').classList.remove('show');}});
 
 /* ================= Start ================= */
 async function start(){
