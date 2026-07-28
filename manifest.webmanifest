@@ -1,0 +1,17 @@
+{
+  "name": "Quản lý Công việc — Phòng KHTH BV 30-4",
+  "short_name": "KHTH",
+  "description": "Quản lý công việc Phòng Kế hoạch tổng hợp — Bệnh viện 30-4",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#eef2f8",
+  "theme_color": "#2f6fb0",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
