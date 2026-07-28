@@ -965,7 +965,8 @@ async function openTask(id){
   const editable=t?canEdit(t):canCreate();
   // Nhân viên tự tạo việc mới: khóa "Chịu trách nhiệm chính" = chính mình, không giao cho người khác
   const lockAssignee=!t&&editable&&!canAssignOthers();
-  renderCollabChecks(t?collabIdsOf(id):[], !editable||lockAssignee);
+  // Nhân viên tự tạo việc VẪN chọn được "Người phối hợp" (họ là người phụ trách nên có quyền)
+  renderCollabChecks(t?collabIdsOf(id):[], !editable);
   ['fTitle','fDesc','fTeam','fCat','fAssignee','fStatus','fPriority','fDue','fProgress'].forEach(f=>$('#'+f).disabled=!editable);
   if(lockAssignee){$('#fAssignee').value=me.id;$('#fAssignee').disabled=true;}
   $('#tmSave').style.display=editable?'inline-flex':'none';
