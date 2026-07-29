@@ -1321,7 +1321,7 @@ function fillTaskSelects(allowTeamId){
   if(!isAdmin()){const allow=new Set([...myLeadIds(),...(me.teamIds||[])]);if(allowTeamId)allow.add(allowTeamId);opts=teams.filter(t=>allow.has(t.id));}
   $('#fTeam').innerHTML=opts.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')||'<option value="">(không có tổ được phép)</option>';
   $('#fProject').innerHTML='<option value="">— Không thuộc dự án —</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  $('#fAssignee').innerHTML='<option value="">— Chưa giao —</option>'+members.map(m=>{const tn=teamIdsOf(m.id).map(id=>team(id)?.name?.replace('Tổ ','')).filter(Boolean).join(', ');return `<option value="${m.id}">${m.full_name}${tn?' · '+tn:''}</option>`;}).join('');
+  $('#fAssignee').innerHTML='<option value="">— Chưa giao —</option>'+members.map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('');
 }
 async function openTask(id){
   const t=id?tasks.find(x=>x.id===id):null;
@@ -1354,10 +1354,8 @@ window.openTask=openTask;
 let collabDisabled=false;
 function renderCollabChecks(selected,disabled){
   const sel=new Set(selected);collabDisabled=disabled;
-  const items=members.map(m=>`<label title="${esc(m.full_name)}" style="display:flex;align-items:center;gap:5px;padding:5px 6px;border-radius:7px;font-size:12.5px;min-width:0;cursor:${disabled?'default':'pointer'}">
-    <input type="checkbox" class="collabChk" value="${m.id}" ${sel.has(m.id)?'checked':''} ${disabled?'disabled':''} onchange="updateCollabSummary()" style="flex:0 0 auto">
-    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.full_name)}</span></label>`).join('');
-  $('#collabPanel').innerHTML=members.length?`<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px">${items}</div>`:'<div style="color:var(--muted2);padding:8px">Chưa có nhân sự</div>';
+  $('#collabPanel').innerHTML=members.length?members.map(m=>`<label style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;font-size:13px;font-weight:400;color:var(--txt);cursor:${disabled?'default':'pointer'}">
+    <input type="checkbox" class="collabChk" value="${m.id}" ${sel.has(m.id)?'checked':''} ${disabled?'disabled':''} onchange="updateCollabSummary()" style="flex:0 0 auto"> ${esc(m.full_name)}</label>`).join(''):'<div style="color:var(--muted2);padding:8px">Chưa có nhân sự</div>';
   $('#collabPanel').style.display='none';
   $('#collabControl').style.opacity=disabled?'.6':'1';
   $('#collabControl').style.cursor=disabled?'default':'pointer';
