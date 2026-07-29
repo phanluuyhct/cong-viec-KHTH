@@ -276,7 +276,7 @@
     <button class="nav-item" data-view="kpi"><span class="ic">📈</span> KPI & Thống kê</button>
     <button class="nav-item" data-view="report"><span class="ic">📝</span> Báo cáo tháng <span id="reportNavDot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--red)"></span></button>
     <button class="nav-item" data-view="gantt"><span class="ic">📶</span> Gantt</button>
-    <button class="nav-item" data-view="staff" id="navStaff"><span class="ic">👥</span> Nhân sự</button>
+    <button class="nav-item" data-view="staff" id="navStaff"><span class="ic">👥</span> Nhân sự <span id="staffCount" style="margin-left:auto;background:var(--bg2);color:var(--muted);border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700"></span></button>
     <div class="userbox">
       <div class="nm" id="uName">—</div>
       <div class="rl" id="uTeam">—</div>
@@ -1210,8 +1210,9 @@ function renderStaff(){
   const canEditStaff=canManageStaff();
   $('#btnAddUser').classList.toggle('hidden',!canEditStaff);
   $('#staffNote').textContent=canEditStaff?'Trưởng/Phó phòng & Trợ lý thêm/sửa nhân sự; chỉ Lãnh đạo/Quản trị mới xóa được.':'Danh sách cán bộ trong phòng (chỉ xem).';
+  $('#staffCount').textContent=members.length;
   $('#staffBody').innerHTML=members.map(m=>{const r=roleLabel(m);
-    return `<tr onclick="openStaffDetail('${m.id}')" style="cursor:pointer"><td class="tc">${ava(m)} ${esc(m.full_name)}</td><td>${esc(m.email||'')}</td><td>${teamsChips(m.id)}</td><td><span class="role-badge ${r.cls}">${r.label}</span></td><td>${esc(m.position||'')}</td><td>${esc(m.phone||'—')}</td><td>${fmtBirth(m.birthday)}</td></tr>`;}).join('');
+    return `<tr onclick="openStaffDetail('${m.id}')" style="cursor:pointer"><td class="tc" style="white-space:nowrap">${ava(m)} ${esc(m.full_name)}</td><td>${esc(m.email||'')}</td><td>${teamsChips(m.id)}</td><td><span class="role-badge ${r.cls}">${r.label}</span></td><td>${esc(m.position||'')}</td><td>${esc(m.phone||'—')}</td><td>${fmtBirth(m.birthday)}</td></tr>`;}).join('');
 }
 function drillTeam(id){drillFilter=null;$('#filterTeam').value=id;$('#filterMember').value='';$('#filterProject').value='';renderAll();nav('tasks');toast('Lọc theo tổ','ok');}
 window.drillTeam=drillTeam;
