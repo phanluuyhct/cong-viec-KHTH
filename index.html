@@ -564,6 +564,10 @@
       <div class="field"><label>Tên dự án</label><input id="pName" placeholder="VD: Triển khai Bệnh án điện tử"></div>
       <div class="field"><label>Mô tả</label><textarea id="pDesc" placeholder="Mục tiêu, phạm vi dự án..."></textarea></div>
       <div class="two">
+        <div class="field"><label>Ngày bắt đầu</label><input type="date" id="pStart"></div>
+        <div class="field"><label>Ngày kết thúc</label><input type="date" id="pEnd"></div>
+      </div>
+      <div class="two">
         <div class="field"><label>Trạng thái</label><select id="pStatus"><option value="active">Đang chạy</option><option value="paused">Tạm dừng</option><option value="done">Hoàn thành</option></select></div>
         <div class="field"><label>Màu</label><input type="color" id="pColor" value="#3b82f6" style="height:42px;padding:4px"></div>
       </div>
@@ -1185,17 +1189,30 @@ function reportReminderUpdate(){
 }
 window.dismissReportReminder=()=>{reportRemindDismissed=true;$('#reportReminder').style.display='none';};
 
+function projRange(p){
+  let s=p.start_date, e=p.end_date;
+  if(!s||!e){
+    const pts=tasks.filter(t=>t.project_id===p.id);
+    const starts=pts.map(t=>t.start_date||t.due_date).filter(Boolean).sort();
+    const ends=pts.map(t=>t.due_date||t.start_date).filter(Boolean).sort();
+    if(!s)s=starts[0];
+    if(!e)e=ends[ends.length-1];
+  }
+  return {s:s||e, e:e||s};
+}
 function renderGantt(){
   const gp=$('#ganttProject'), cur=gp.value;
-  gp.innerHTML='<option value="">Tất cả nhiệm vụ</option>'+projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  gp.innerHTML='<option value="">Tất cả nhiệm vụ</option><option value="__proj__">📁 Các dự án (theo thời gian)</option>'+projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
   gp.value=cur;
-  const pid=gp.value;
-  const rows0=tasks.filter(t=>(!pid||String(t.project_id)===pid)).map(t=>{
-    const s=t.start_date||t.due_date, e=t.due_date||t.start_date;
-    if(!s&&!e)return null;
-    return {t,s:new Date(s),e:new Date(e)};
-  }).filter(Boolean);
-  if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Chưa có nhiệm vụ nào có ngày bắt đầu / hạn chót để vẽ Gantt.<br>Hãy mở nhiệm vụ và điền <b>Ngày bắt đầu</b> và <b>Hạn chót</b>.</div>';return;}
+  const pid=gp.value, isProj=(pid==='__proj__');
+  let rows0;
+  if(isProj){
+    rows0=projects.map(p=>{const {s,e}=projRange(p);if(!s&&!e)return null;return {label:p.name,s:new Date(s),e:new Date(e),color:p.color||'#3b82f6',click:`openProject(${p.id})`,od:false};}).filter(Boolean);
+    if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Chưa có dự án nào có ngày để vẽ Gantt.<br>Mở một dự án và điền <b>Ngày bắt đầu</b> / <b>Ngày kết thúc</b> (hoặc thêm nhiệm vụ có ngày để tự suy ra).</div>';return;}
+  }else{
+    rows0=tasks.filter(t=>(!pid||String(t.project_id)===pid)).map(t=>{const s=t.start_date||t.due_date,e=t.due_date||t.start_date;if(!s&&!e)return null;return {label:t.title,s:new Date(s),e:new Date(e),color:STATUS[t.status].color,click:`openTask(${t.id})`,od:isOverdue(t)};}).filter(Boolean);
+    if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Chưa có nhiệm vụ nào có ngày bắt đầu / hạn chót để vẽ Gantt.<br>Hãy mở nhiệm vụ và điền <b>Ngày bắt đầu</b> và <b>Hạn chót</b>.</div>';return;}
+  }
   let min=Math.min(...rows0.map(x=>x.s.getTime())), max=Math.max(...rows0.map(x=>x.e.getTime()));
   if(max<=min)max=min+86400000;
   const span=max-min;
@@ -1203,24 +1220,22 @@ function renderGantt(){
   const iso=ms=>new Date(ms).toISOString().slice(0,10);
   const LABELW=190, GAP=8;
   const pctOf=ms=>Math.max(0,Math.min(100,(ms-min)/span*100));
-  // Trục thời gian: các mốc đầu tháng trong khoảng min→max
   const months=[]; let md=new Date(min); md=new Date(md.getFullYear(),md.getMonth(),1);
   while(md.getTime()<=max){months.push(new Date(md));md=new Date(md.getFullYear(),md.getMonth()+1,1);}
   const axisLabels=months.map((m,i)=>{const l=pctOf(m.getTime());const yr=(m.getMonth()===0||i===0)?('/'+m.getFullYear()):'';return `<span style="position:absolute;left:${l}%;font-size:10.5px;color:var(--muted);white-space:nowrap;border-left:1px solid var(--line2);padding-left:3px;top:0">Th${m.getMonth()+1}${yr}</span>`;}).join('');
   const gridLines=months.map(m=>`<div style="position:absolute;left:${pctOf(m.getTime())}%;top:0;bottom:0;width:1px;background:var(--line2)"></div>`).join('');
   const header=`<div style="display:flex;gap:${GAP}px;margin-bottom:6px"><div style="width:${LABELW}px;flex:0 0 ${LABELW}px"></div><div style="flex:1;position:relative;height:16px;min-width:200px">${axisLabels}</div></div>`;
-  const body=rows0.map(({t,s,e})=>{
-    const left=pctOf(s.getTime()), width=Math.max(1.2,(e.getTime()-s.getTime())/span*100);
-    const col=STATUS[t.status].color, od=isOverdue(t);
-    const rng=fmtDate(iso(s.getTime()))+' → '+fmtDate(iso(e.getTime()));
+  const body=rows0.map(r=>{
+    const left=pctOf(r.s.getTime()), width=Math.max(1.2,(r.e.getTime()-r.s.getTime())/span*100);
+    const rng=fmtDate(iso(r.s.getTime()))+' → '+fmtDate(iso(r.e.getTime()));
     return `<div style="display:flex;align-items:center;gap:${GAP}px;padding:4px 0;border-bottom:1px solid var(--line)">
-      <div style="width:${LABELW}px;flex:0 0 ${LABELW}px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openTask(${t.id})" title="${esc(t.title)}">${esc(t.title)}</div>
+      <div style="width:${LABELW}px;flex:0 0 ${LABELW}px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="${r.click}" title="${esc(r.label)}">${esc(r.label)}</div>
       <div style="flex:1;position:relative;height:22px;background:var(--bg2);border-radius:5px;min-width:200px;overflow:hidden">
         ${gridLines}
-        <div onclick="openTask(${t.id})" title="${esc(t.title)} · ${rng}" style="position:absolute;left:${left}%;width:${width}%;top:3px;height:16px;background:${col};border-radius:4px;cursor:pointer;z-index:1;${od?'box-shadow:0 0 0 2px var(--red)':''}"></div>
+        <div onclick="${r.click}" title="${esc(r.label)} · ${rng}" style="position:absolute;left:${left}%;width:${width}%;top:3px;height:16px;background:${r.color};border-radius:4px;cursor:pointer;z-index:1;${r.od?'box-shadow:0 0 0 2px var(--red)':''}"></div>
       </div></div>`;
   }).join('');
-  const legend=`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)">${['todo','doing','review','done','hoan','huy'].map(s=>`<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:${STATUS[s].color};display:inline-block"></i>${STATUS[s].label}</span>`).join('')}</div>`;
+  const legend=isProj?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)">${['todo','doing','review','done','hoan','huy'].map(s=>`<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:${STATUS[s].color};display:inline-block"></i>${STATUS[s].label}</span>`).join('')}</div>`;
   $('#ganttView').innerHTML=header+body+legend;
 }
 $('#ganttProject')&&($('#ganttProject').onchange=renderGantt);
@@ -1281,6 +1296,7 @@ function openProject(id){
   if(!canManageProject())return;editProjId=id;const p=id?project(id):null;
   $('#pmTitle').textContent=p?'Chỉnh sửa dự án':'Dự án mới';
   $('#pName').value=p?.name||'';$('#pDesc').value=p?.description||'';
+  $('#pStart').value=p?.start_date||'';$('#pEnd').value=p?.end_date||'';
   $('#pStatus').value=p?.status||'active';$('#pColor').value=p?.color||'#3b82f6';
   $('#pmDelete').style.display=p?'inline-flex':'none';
   $('#projModal').classList.add('show');
@@ -1288,7 +1304,7 @@ function openProject(id){
 window.openProject=openProject;
 async function saveProject(){
   const name=$('#pName').value.trim();if(!name){toast('Nhập tên dự án','err');return;}
-  const obj={name,description:$('#pDesc').value.trim(),status:$('#pStatus').value,color:$('#pColor').value};
+  const obj={name,description:$('#pDesc').value.trim(),status:$('#pStatus').value,color:$('#pColor').value,start_date:$('#pStart').value||null,end_date:$('#pEnd').value||null};
   try{
     if(editProjId){const {error}=await sb.from('projects').update(obj).eq('id',editProjId);if(error)throw error;}
     else{obj.creator_id=me.id;const {error}=await sb.from('projects').insert(obj);if(error)throw error;}
