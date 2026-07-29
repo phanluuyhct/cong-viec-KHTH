@@ -1023,7 +1023,7 @@ function monthSummary(pid,ym){
 }
 function summaryPanel(pid,ym){
   const s=monthSummary(pid,ym);
-  const listChips=arr=>arr.length?arr.map(t=>{const ph=t.assignee_id!==pid;return `<span class="chip" style="background:var(--bg2);color:var(--txt)" title="${ph?'Phối hợp':'Chịu trách nhiệm chính'}">${esc(t.title)}${ph?' <span style="opacity:.65;font-size:10px">(phối hợp)</span>':''}</span>`;}).join(' '):'<span style="color:var(--muted2);font-size:12px">—</span>';
+  const listChips=arr=>arr.length?arr.map(t=>{const ph=t.assignee_id!==pid;return `<span class="chip" onclick="openReportTask(${t.id})" style="background:var(--bg2);color:var(--txt);cursor:pointer" title="Bấm để xem chi tiết công việc">${esc(t.title)}${ph?' <span style="opacity:.65;font-size:10px">(phối hợp)</span>':''}</span>`;}).join(' '):'<span style="color:var(--muted2);font-size:12px">—</span>';
   return `<div class="card" style="margin-bottom:12px">
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <div style="flex:1;min-width:90px;background:var(--bg2);border-radius:9px;padding:8px 10px"><div style="font-size:11px;color:var(--muted)">Hoàn thành trong tháng</div><div style="font-weight:800;font-size:18px;color:var(--green)">${s.doneThis.length}</div></div>
@@ -1034,6 +1034,7 @@ function summaryPanel(pid,ym){
     <div style="font-size:12px;color:var(--muted);margin-bottom:3px">🔄 Đang làm / chưa xong:</div><div>${listChips(s.open)}</div>
   </div>`;
 }
+window.openReportTask=(id)=>{$('#reviewModal').classList.remove('show');openTask(id);};
 function renderReport(){
   if(!me)return;
   const sel=$('#reportMonth'); const months=recentMonths(12);
@@ -1425,7 +1426,7 @@ async function loadSubtasks(taskId){
     const opts=Object.entries(SUBSTAT).map(([v,l])=>`<option value="${v}" ${st===v?'selected':''}>${l}</option>`).join('');
     return `<div class="st-item ${dn?'done':''}" style="flex-wrap:wrap;gap:6px;align-items:center">
       <select onchange="setSubStatus(${s.id},this.value)" style="font-size:12px;padding:3px 6px;border-radius:7px">${opts}</select>
-      <span class="txt" style="flex:1;min-width:120px">${esc(s.content)}</span>
+      <input class="subContent" value="${esc(s.content).replace(/"/g,'&quot;')}" onchange="setSubContent(${s.id},this.value)" title="Sửa nội dung việc con" style="flex:1 1 120px;width:auto;min-width:120px;font-size:13px;padding:6px 8px;border:1px solid var(--line2);border-radius:7px;background:var(--bg2);color:var(--txt)${dn?';text-decoration:line-through;color:var(--muted2)':''}">
       <input type="date" value="${s.due_date||''}" onchange="setSubDue(${s.id},this.value)" title="Hạn hoàn thành" style="font-size:12px;padding:2px 5px;border-radius:7px;${od?'color:var(--red);border-color:var(--red)':''}">
       ${od?'<span class="chip pri-cao" style="font-size:10px">trễ</span>':''}
       <button class="btn sm danger" onclick="delSub(${s.id})">✕</button></div>`;
@@ -1439,6 +1440,7 @@ $('#subAdd').onclick=async()=>{
 };
 window.setSubStatus=async(id,status)=>{const {error}=await sb.from('subtasks').update({status}).eq('id',id);if(error){toast('Lỗi: '+error.message,'err');return;}loadSubtasks(editId);};
 window.setSubDue=async(id,due_date)=>{await sb.from('subtasks').update({due_date:due_date||null}).eq('id',id);loadSubtasks(editId);};
+window.setSubContent=async(id,content)=>{content=(content||'').trim();if(!content){loadSubtasks(editId);return;}const {error}=await sb.from('subtasks').update({content}).eq('id',id);if(error)toast('Lỗi: '+error.message,'err');};
 window.delSub=async(id)=>{await sb.from('subtasks').delete().eq('id',id);loadSubtasks(editId);};
 
 /* ---- Comments (realtime) ---- */
