@@ -40,6 +40,8 @@
   html[data-theme="light"] .badge.b-doing{background:#e3f0fb;color:#1c6fb8}
   html[data-theme="light"] .badge.b-review{background:#efe8fb;color:#6f42c1}
   html[data-theme="light"] .badge.b-done{background:#e2f6ec;color:#1a7a50}
+  html[data-theme="light"] .badge.b-hoan{background:#fdf0d5;color:#8a5a00}
+  html[data-theme="light"] .badge.b-huy{background:#f0f1f4;color:#8a94a6}
   html[data-theme="light"] .role-badge.rb-admin{background:#fcefcf;color:#8a5a00}
   html[data-theme="light"] .role-badge.rb-tp{background:#efe6fb;color:#6a3db0}
   html[data-theme="light"] .role-badge.rb-pho{background:#fceadd;color:#b45716}
@@ -157,7 +159,7 @@
   .row-od td{background:linear-gradient(90deg,var(--redbg),transparent 60%)!important}
   .row-od td.tc{color:#ff90a5}.row-dn td.tc{text-decoration:line-through;color:var(--muted)}
   .badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700}
-  .b-todo{background:#2a3550;color:#b9c6e6}.b-doing{background:#12324a;color:#7fc7ff}.b-review{background:#241a3a;color:#c3a6ff}.b-done{background:var(--greenbg);color:#6ee7b0}
+  .b-todo{background:#2a3550;color:#b9c6e6}.b-doing{background:#12324a;color:#7fc7ff}.b-review{background:#241a3a;color:#c3a6ff}.b-done{background:var(--greenbg);color:#6ee7b0}.b-hoan{background:#3a2f16;color:#f0c674}.b-huy{background:#2b3040;color:#9aa7c2}
   .mini-bar{height:7px;border-radius:5px;background:var(--line);overflow:hidden;width:100px;display:inline-block;vertical-align:middle}
   .mini-bar>i{display:block;height:100%;background:var(--accent)}
 
@@ -251,6 +253,8 @@
     <div class="field" id="nameField" style="display:none"><label>Họ và tên</label><input id="aName" placeholder="Nguyễn Văn A"></div>
     <div class="field" id="roleField" style="display:none"><label>Chức vụ</label><select id="aRole"><option value="nhan_vien">Nhân viên</option><option value="pho_truong_phong">Phó trưởng phòng</option><option value="truong_phong">Trưởng phòng</option></select></div>
     <div class="field" id="teamField" style="display:none"><label>Tổ tham gia (nếu biết)</label><select id="aTeam"><option value="">— Chưa chọn —</option></select></div>
+    <div class="field" id="phoneField" style="display:none"><label>Số điện thoại</label><input id="aPhone" placeholder="VD: 0912 345 678"></div>
+    <div class="field" id="birthField" style="display:none"><label>Ngày sinh</label><input id="aBirth" type="date"></div>
     <div class="field"><label>Email</label><input id="aEmail" type="email" placeholder="email@benhvien.vn"></div>
     <div class="field"><label>Mật khẩu</label><input id="aPass" type="password" placeholder="Tối thiểu 6 ký tự"></div>
     <button class="btn primary full" id="aSubmit">Đăng nhập</button>
@@ -270,12 +274,15 @@
     <button class="nav-item" data-view="projects"><span class="ic">📁</span> Dự án</button>
     <button class="nav-item" data-view="calendar"><span class="ic">📅</span> Lịch</button>
     <button class="nav-item" data-view="kpi"><span class="ic">📈</span> KPI & Thống kê</button>
-    <button class="nav-item hidden" data-view="staff" id="navStaff"><span class="ic">👥</span> Nhân sự</button>
+    <button class="nav-item" data-view="report"><span class="ic">📝</span> Báo cáo tháng <span id="reportNavDot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--red)"></span></button>
+    <button class="nav-item" data-view="gantt"><span class="ic">📶</span> Gantt</button>
+    <button class="nav-item" data-view="staff" id="navStaff"><span class="ic">👥</span> Nhân sự</button>
     <div class="userbox">
       <div class="nm" id="uName">—</div>
       <div class="rl" id="uTeam">—</div>
       <div id="uRole"></div>
-      <button class="btn sm full" id="btnChangePass" style="margin-top:10px">🔑 Đổi mật khẩu</button>
+      <button class="btn sm full" id="btnProfile" style="margin-top:10px">👤 Hồ sơ của tôi</button>
+      <button class="btn sm full" id="btnChangePass" style="margin-top:6px">🔑 Đổi mật khẩu</button>
       <button class="btn sm full" id="btnLogout" style="margin-top:6px">Đăng xuất</button>
     </div>
   </aside>
@@ -298,10 +305,17 @@
       </div>
       <button class="btn primary" id="btnNew">＋ Nhiệm vụ</button>
     </div>
+    <div id="reportReminder" style="display:none;align-items:center;gap:12px;background:#fff6e6;border:1px solid #f0c674;color:#8a5a00;padding:11px 16px;margin:12px 16px 0;border-radius:12px;font-size:13px;font-weight:600">
+      <span style="font-size:18px">📝</span>
+      <span id="reportReminderTxt" style="flex:1">Sắp hết tháng — bạn chưa nộp báo cáo tháng.</span>
+      <button class="btn sm primary" onclick="nav('report')">Làm báo cáo ngay</button>
+      <button class="btn sm" onclick="dismissReportReminder()">✕</button>
+    </div>
     <div class="content">
       <section class="view active" id="view-dashboard">
         <div class="grid stat-row" id="statRow"></div>
         <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:16px" id="dashCharts"></div>
+        <div id="dashBirthdayWrap" style="display:none"><div class="section-title">🎂 Sinh nhật trong tháng</div><div class="card" id="dashBirthday"></div></div>
         <div class="section-title">🏥 Tiến độ theo tổ</div>
         <div class="card" id="teamProgress"></div>
         <div class="section-title">⚠️ Nhiệm vụ quá hạn & sắp tới hạn</div>
@@ -329,14 +343,31 @@
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Thành viên</th><th>Tổng NV</th><th>Hoàn thành</th><th>Đúng hạn</th><th>Trễ hạn</th><th>Tỉ lệ</th><th>Điểm KPI</th></tr></thead><tbody id="kpiBody"></tbody></table></div>
         <div class="section-title">🏥 KPI theo tổ</div>
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Tổ</th><th>Số việc</th><th>Hoàn thành</th><th>Tỉ lệ hoàn thành</th></tr></thead><tbody id="kpiTeamBody"></tbody></table></div>
+        <div class="section-title">👔 KPI theo Lãnh đạo phụ trách</div>
+        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Lãnh đạo</th><th>Số tổ</th><th>Số việc</th><th>Hoàn thành</th><th>Trễ hạn</th><th>Tỉ lệ</th><th>Điểm</th></tr></thead><tbody id="kpiLeaderBody"></tbody></table></div>
+      </section>
+      <section class="view" id="view-report">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+          <div class="legend" style="margin:0"><span>Cuối tháng: tự tổng hợp kết quả & phương hướng tháng tới. Lãnh đạo/Tổ trưởng xem và duyệt.</span></div>
+          <select class="sel" id="reportMonth" style="margin-left:auto"></select>
+        </div>
+        <div id="reportMine"></div>
+        <div id="reportAllWrap" style="display:none"><div class="section-title">📋 Báo cáo cán bộ trong tháng</div><div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Tổ</th><th>Trạng thái</th><th>Cập nhật</th></tr></thead><tbody id="reportAllBody"></tbody></table></div></div>
+      </section>
+      <section class="view" id="view-gantt">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+          <div class="legend" style="margin:0"><span>Sơ đồ Gantt theo thời gian (ngày bắt đầu → hạn chót). Bấm thanh để mở nhiệm vụ.</span></div>
+          <select class="sel" id="ganttProject" style="margin-left:auto"><option value="">Tất cả nhiệm vụ</option></select>
+        </div>
+        <div class="card" style="overflow:auto" id="ganttView"></div>
       </section>
       <section class="view" id="view-calendar">
         <div class="cal-head"><button class="btn" id="calPrev">‹</button><h3 id="calLabel" style="min-width:150px;text-align:center"></h3><button class="btn" id="calNext">›</button><button class="btn" id="calToday">Hôm nay</button></div>
         <div class="cal-grid" id="calGrid"></div>
       </section>
       <section class="view" id="view-staff">
-        <div style="display:flex;align-items:center;margin-bottom:12px"><div class="legend" style="margin:0"><span>Trưởng/Phó phòng & Trợ lý thêm nhân viên và điều phối tổ; chỉ Trưởng/Phó phòng đổi được vai trò.</span></div><button class="btn primary" id="btnAddUser" style="margin-left:auto">＋ Thêm nhân viên</button></div>
-        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Họ tên</th><th>Email</th><th>Tổ</th><th>Chức vụ</th><th>Vai trò / Chức danh</th></tr></thead><tbody id="staffBody"></tbody></table></div>
+        <div style="display:flex;align-items:center;margin-bottom:12px"><div class="legend" style="margin:0"><span id="staffNote">Danh sách cán bộ trong phòng.</span></div><button class="btn primary hidden" id="btnAddUser" style="margin-left:auto">＋ Thêm nhân viên</button></div>
+        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Họ tên</th><th>Email</th><th>Tổ</th><th>Chức vụ</th><th>Vai trò / Chức danh</th><th>SĐT</th><th>Ngày sinh</th></tr></thead><tbody id="staffBody"></tbody></table></div>
       </section>
     </div>
   </div>
@@ -359,10 +390,11 @@
       </div>
       <div class="field"><label>Loại công việc</label><input id="fCat" placeholder="VD: Khám DN, Tuyển sinh, Đi nước ngoài..."></div>
       <div class="three">
-        <div class="field"><label>Trạng thái</label><select id="fStatus"><option value="todo">Cần làm</option><option value="doing">Đang làm</option><option value="review">Đang duyệt</option><option value="done">Hoàn thành</option></select></div>
+        <div class="field"><label>Trạng thái</label><select id="fStatus"><option value="todo">Cần làm</option><option value="doing">Đang làm</option><option value="review">Đang duyệt</option><option value="done">Hoàn thành</option><option value="hoan">Hoãn</option><option value="huy">Hủy</option></select></div>
         <div class="field"><label>Ưu tiên</label><select id="fPriority"><option value="cao">Cao</option><option value="trung">Trung bình</option><option value="thap">Thấp</option></select></div>
-        <div class="field"><label>Hạn chót</label><input type="date" id="fDue"></div>
+        <div class="field"><label>Ngày bắt đầu</label><input type="date" id="fStart"></div>
       </div>
+      <div class="field"><label>Hạn chót</label><input type="date" id="fDue"></div>
       <div class="field"><label>Tiến độ (%)</label><input type="number" id="fProgress" min="0" max="100" step="5" value="0"></div>
 
       <div class="tabs" id="detailTabs" style="display:none">
@@ -372,7 +404,7 @@
       </div>
       <div class="tabpane active" data-pane="sub" id="paneSub">
         <div id="subList"></div>
-        <div class="addrow"><input id="subInput" placeholder="Thêm ghi chú / mục việc nhỏ..."><button class="btn primary" id="subAdd">Thêm</button></div>
+        <div class="addrow" style="flex-wrap:wrap"><input id="subInput" placeholder="Thêm mục việc nhỏ..." style="flex:1;min-width:140px"><input type="date" id="subDue" title="Hạn hoàn thành (tùy chọn)" style="max-width:150px"><button class="btn primary" id="subAdd">Thêm</button></div>
       </div>
       <div class="tabpane" data-pane="cmt" id="paneCmt">
         <div id="cmtList"></div>
@@ -410,6 +442,10 @@
         <div class="field"><label>Chức vụ (cấp phòng)</label><select id="smRole"><option value="nhan_vien">Nhân viên</option><option value="tro_ly">Trợ lý LĐ phòng (giao/sửa/xóa việc)</option><option value="pho_truong_phong">Phó trưởng phòng</option><option value="truong_phong">Trưởng phòng (toàn quyền)</option></select></div>
         <div class="field"><label>Vai trò / Chức danh</label><input id="smPos" placeholder="VD: Bác sĩ, Điều dưỡng..."></div>
       </div>
+      <div class="two">
+        <div class="field"><label>Số điện thoại</label><input id="smPhone" placeholder="VD: 0912 345 678"></div>
+        <div class="field"><label>Ngày sinh</label><input id="smBirth" type="date"></div>
+      </div>
       <div class="field"><label>Tham gia các tổ (tích chọn; ★ = tổ trưởng tổ đó)</label>
         <div id="smTeams" style="display:flex;flex-direction:column;gap:7px;margin-top:4px"></div>
       </div>
@@ -419,7 +455,43 @@
         <p style="color:var(--muted2);font-size:12px;margin-top:5px">Cần đã triển khai Edge Function "reset-password". Nhớ báo mật khẩu mới cho họ.</p>
       </div>
     </div>
-    <div class="modal-f"><button class="btn ghost" id="smCancel">Hủy</button><button class="btn primary" id="smSave">Lưu</button></div>
+    <div class="modal-f"><button class="btn danger hidden" id="smDelete" style="margin-right:auto">🗑 Xóa nhân sự</button><button class="btn ghost" id="smCancel">Hủy</button><button class="btn primary" id="smSave">Lưu</button></div>
+  </div>
+</div>
+
+<!-- HỒ SƠ CỦA TÔI MODAL -->
+<div class="overlay" id="profileModal">
+  <div class="modal sm">
+    <div class="modal-h"><h3>Hồ sơ của tôi</h3><button class="x" id="prClose">✕</button></div>
+    <div class="modal-b">
+      <div class="field"><label>Họ tên</label><input id="prName"></div>
+      <div class="two">
+        <div class="field"><label>Số điện thoại</label><input id="prPhone" placeholder="VD: 0912 345 678"></div>
+        <div class="field"><label>Ngày sinh</label><input id="prBirth" type="date"></div>
+      </div>
+      <div class="field"><label>Vai trò / Chức danh</label><input id="prPos" placeholder="VD: Bác sĩ, Điều dưỡng..."></div>
+      <div class="field"><label>Chức vụ (cấp phòng)</label><input id="prRole" disabled style="background:var(--bg2);color:var(--muted)"></div>
+      <p style="color:var(--muted2);font-size:12px">Chức vụ do Lãnh đạo/Quản trị phân, bạn không tự đổi được.</p>
+    </div>
+    <div class="modal-f"><button class="btn ghost" id="prCancel">Hủy</button><button class="btn primary" id="prSave">Lưu</button></div>
+  </div>
+</div>
+
+<!-- CHI TIẾT CÔNG VIỆC THEO CÁN BỘ -->
+<div class="overlay" id="staffDetailModal">
+  <div class="modal">
+    <div class="modal-h"><h3 id="sdTitle">Công việc của cán bộ</h3><button class="x" id="sdClose">✕</button></div>
+    <div class="modal-b" id="sdBody"></div>
+    <div class="modal-f"><button class="btn primary hidden" id="sdEdit" style="margin-right:auto">✏️ Sửa hồ sơ</button><button class="btn ghost" id="sdCancel">Đóng</button></div>
+  </div>
+</div>
+
+<!-- DUYỆT BÁO CÁO THÁNG -->
+<div class="overlay" id="reviewModal">
+  <div class="modal">
+    <div class="modal-h"><h3 id="rvTitle">Báo cáo tháng</h3><button class="x" id="rvClose">✕</button></div>
+    <div class="modal-b" id="rvBody"></div>
+    <div class="modal-f"><button class="btn" id="rvPrint" style="margin-right:auto">🖨️ In</button><button class="btn ghost" id="rvCancel">Đóng</button><button class="btn" id="rvSaveNote">Lưu nhận xét</button><button class="btn primary" id="rvApprove">✓ Đã duyệt</button></div>
   </div>
 </div>
 
@@ -481,7 +553,10 @@
     <div class="modal-b">
       <div class="field"><label>Tên tổ</label><input id="toName" placeholder="VD: Bệnh án điện tử"></div>
       <div class="field"><label>Mô tả</label><textarea id="toDesc" placeholder="Nội dung công việc của tổ..."></textarea></div>
-      <div class="field"><label>Thứ tự hiển thị</label><input id="toOrder" type="number" placeholder="VD: 5"></div>
+      <div class="two">
+        <div class="field"><label>Lãnh đạo phụ trách</label><select id="toLeader"><option value="">— Chưa phân công —</option></select></div>
+        <div class="field"><label>Thứ tự hiển thị</label><input id="toOrder" type="number" placeholder="VD: 5"></div>
+      </div>
     </div>
     <div class="modal-f"><button class="btn danger" id="tmoDelete" style="margin-right:auto">🗑 Xóa</button><button class="btn ghost" id="tmoCancel">Hủy</button><button class="btn primary" id="tmoSave">Lưu</button></div>
   </div>
@@ -497,11 +572,11 @@ const EMBED_URL='https://ljkfxhdcmfngdtditeyy.supabase.co';
 const EMBED_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqa2Z4aGRjbWZuZ2R0ZGl0ZXl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODk3NzEsImV4cCI6MjEwMDc2NTc3MX0.Qbgy-VrVG5GIz_70w4AJMY9uCVEt8s2LTjmkrqTAEYU';
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 let sb=null, session=null, me=null;
-let teams=[], members=[], tasks=[], memberTeams=[], projects=[], taskCollabs=[];
+let teams=[], members=[], tasks=[], memberTeams=[], projects=[], taskCollabs=[], reports=[];
 let editId=null, cmtChannel=null, taskChannel=null, editProjId=null;
 const AV=['#3b82f6','#31c48d','#f5a524','#a878ff','#33c9dc','#f2506e','#ff8c42','#4dd0a0','#9b6dff','#ff6b9d'];
 
-const STATUS={todo:{label:'Cần làm',color:'#7c8bb0',cls:'b-todo'},doing:{label:'Đang làm',color:'#3b82f6',cls:'b-doing'},review:{label:'Đang duyệt',color:'#a878ff',cls:'b-review'},done:{label:'Hoàn thành',color:'#31c48d',cls:'b-done'}};
+const STATUS={todo:{label:'Cần làm',color:'#7c8bb0',cls:'b-todo'},doing:{label:'Đang làm',color:'#3b82f6',cls:'b-doing'},review:{label:'Đang duyệt',color:'#a878ff',cls:'b-review'},done:{label:'Hoàn thành',color:'#31c48d',cls:'b-done'},hoan:{label:'Hoãn',color:'#eda100',cls:'b-hoan'},huy:{label:'Hủy',color:'#8a94a6',cls:'b-huy'}};
 const PRI={cao:{label:'Cao',cls:'pri-cao'},trung:{label:'Trung bình',cls:'pri-trung'},thap:{label:'Thấp',cls:'pri-thap'}};
 const ROLE={admin:{label:'Quản trị hệ thống',cls:'rb-admin'},truong_phong:{label:'Trưởng phòng',cls:'rb-tp'},pho_truong_phong:{label:'Phó trưởng phòng',cls:'rb-pho'},tro_ly:{label:'Trợ lý LĐ phòng',cls:'rb-tro'},to_truong:{label:'Tổ trưởng',cls:'rb-tt'},nhan_vien:{label:'Nhân viên',cls:'rb-nv'}};
 
@@ -522,8 +597,9 @@ function roleLabel(m){if(m.role==='admin')return ROLE.admin;if(m.role==='truong_
 function teamsChips(pid){const ids=teamIdsOf(pid);if(!ids.length)return '<span style="color:var(--muted2)">Chưa phân tổ</span>';return ids.map(id=>{const lead=leadIdsOf(pid).includes(id);return `<span class="chip team">${lead?'★ ':''}${esc((team(id)?.name||'').replace('Tổ ',''))}</span>`;}).join(' ');}
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function daysLeft(d){if(!d)return null;return Math.round((new Date(d)-new Date(todayStr()))/86400000);}
-function isOverdue(t){return t.status!=='done'&&t.due_date&&daysLeft(t.due_date)<0;}
-function isSoon(t){const dl=daysLeft(t.due_date);return t.status!=='done'&&dl!==null&&dl>=0&&dl<=3;}
+const CLOSED=['done','huy','hoan']; // không tính quá hạn cho việc đã xong/hủy/hoãn
+function isOverdue(t){return !CLOSED.includes(t.status)&&t.due_date&&daysLeft(t.due_date)<0;}
+function isSoon(t){const dl=daysLeft(t.due_date);return !CLOSED.includes(t.status)&&dl!==null&&dl>=0&&dl<=3;}
 function fmtDate(d){if(!d)return '—';const x=new Date(d);return x.getDate()+'/'+(x.getMonth()+1);}
 function fmtSize(b){if(!b)return '';if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(0)+' KB';return (b/1048576).toFixed(1)+' MB';}
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -567,7 +643,7 @@ async function loadAuthTeams(){
 }
 function toggleSignup(){signupMode=!signupMode;
   $('#authTitle').textContent=signupMode?'Đăng ký tài khoản':'Đăng nhập';
-  ['nameField','roleField','teamField'].forEach(id=>$('#'+id).style.display=signupMode?'block':'none');
+  ['nameField','roleField','teamField','phoneField','birthField'].forEach(id=>$('#'+id).style.display=signupMode?'block':'none');
   $('#aSubmit').textContent=signupMode?'Đăng ký':'Đăng nhập';
   $('#authSwitch').innerHTML=signupMode?'Đã có tài khoản? <a id="toSignup">Đăng nhập</a>':'Chưa có tài khoản? <a id="toSignup">Đăng ký</a>';
   $('#toSignup').onclick=toggleSignup;$('#authErr').style.display='none';
@@ -583,7 +659,7 @@ $('#aSubmit').onclick=async()=>{
     if(signupMode){
       if(!name){throw new Error('Nhập họ tên');}
       const roleSel=$('#aRole').value||'nhan_vien', teamSel=$('#aTeam').value;
-      const {error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,role:roleSel,team_id:teamSel||null}}});
+      const {error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,role:roleSel,team_id:teamSel||null,phone:$('#aPhone').value.trim(),birthday:$('#aBirth').value||null}}});
       if(error)throw error;
       toast('Đăng ký thành công! Đang đăng nhập...','ok');
     }
@@ -626,17 +702,19 @@ async function loadMe(){
   loadNotifs();subscribeNotifs();requestNotifPerm();
 }
 async function loadData(){
-  const [tRes,mRes,kRes,mtRes,pRes,tcRes]=await Promise.all([
+  const [tRes,mRes,kRes,mtRes,pRes,tcRes,rRes]=await Promise.all([
     sb.from('teams').select('*').order('sort_order'),
     sb.from('profiles').select('*').order('full_name'),
     sb.from('tasks').select('*').order('due_date',{nullsFirst:false}),
     sb.from('member_teams').select('*'),
     sb.from('projects').select('*').order('created_at'),
-    sb.from('task_collaborators').select('*')
+    sb.from('task_collaborators').select('*'),
+    sb.from('monthly_reports').select('*')
   ]);
-  teams=tRes.data||[];members=mRes.data||[];tasks=kRes.data||[];memberTeams=mtRes.data||[];projects=pRes.data||[];taskCollabs=tcRes.data||[];
+  teams=tRes.data||[];members=mRes.data||[];tasks=kRes.data||[];memberTeams=mtRes.data||[];projects=pRes.data||[];taskCollabs=tcRes.data||[];reports=rRes.data||[];
   if(me){me.teamIds=teamIdsOf(me.id);me.leadIds=leadIdsOf(me.id);}
 }
+async function reloadReports(){const {data}=await sb.from('monthly_reports').select('*');reports=data||[];}
 async function reloadTasks(){
   const [k,tc]=await Promise.all([sb.from('tasks').select('*').order('due_date',{nullsFirst:false}),sb.from('task_collaborators').select('*')]);
   tasks=k.data||[];taskCollabs=tc.data||[];renderAll();
@@ -654,7 +732,7 @@ function renderUserBox(){
   $('#uTeam').textContent=tids.length?tids.map(id=>team(id)?.name?.replace('Tổ ','')).filter(Boolean).join(', '):'Chưa phân tổ';
   const r=roleLabel(me);
   $('#uRole').innerHTML=`<span class="role-badge ${r.cls}">${r.label}</span>`;
-  $('#navStaff').classList.toggle('hidden',!canManageStaff());
+  $('#navStaff').classList.remove('hidden'); // ai cũng xem được danh sách nhân sự
   $('#btnNew').style.display=canCreate()?'inline-flex':'none';
 }
 
@@ -697,7 +775,7 @@ function activeFilterChips(){
 }
 
 /* ================= Render ================= */
-function renderAll(){fillFilters();renderDashboard();renderKanban();renderTasks();renderTeams();renderProjects();renderCalendar();renderKPI();if(canManageStaff())renderStaff();}
+function renderAll(){fillFilters();renderDashboard();renderKanban();renderTasks();renderTeams();renderProjects();renderCalendar();renderKPI();renderGantt();renderReport();renderStaff();}
 
 function barChart(title,rows){
   const max=Math.max(1,...rows.map(r=>r.count)), total=rows.reduce((a,b)=>a+b.count,0);
@@ -722,7 +800,7 @@ function hbarChart(title,rows){
 function isOnTime(t){if(t.status!=='done')return false;if(!t.due_date)return true;if(!t.completed_at)return true;return new Date(t.completed_at)<=new Date(t.due_date+'T23:59:59');}
 function computeKPI(){
   return members.map(m=>{
-    const mt=tasks.filter(t=>t.assignee_id===m.id);
+    const mt=tasks.filter(t=>t.assignee_id===m.id&&t.status!=='huy'); // việc đã hủy không tính KPI
     const done=mt.filter(t=>t.status==='done');
     const overdue=mt.filter(isOverdue).length;
     const onTime=mt.filter(isOnTime).length;
@@ -766,6 +844,19 @@ function renderKPI(){
     return `<tr onclick="drillTeam(${tm.id})" style="cursor:pointer"><td class="tc">${esc(tm.name)}</td><td>${tt.length}</td><td>${td}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;max-width:160px;background:var(--line);border-radius:5px;height:8px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${kScoreColor(pct)}"></div></div>${pct}%</div></td></tr>`;
   }).join('');
+
+  // KPI theo Lãnh đạo phụ trách: gộp toàn bộ việc của các tổ mà lãnh đạo đó phụ trách
+  const leadRows=leaderCandidates().map(ld=>{
+    const tids=teams.filter(t=>t.leader_id===ld.id).map(t=>t.id);
+    const tt=tasks.filter(t=>tids.includes(t.team_id)&&t.status!=='huy');
+    const done=tt.filter(t=>t.status==='done').length, overdue=tt.filter(isOverdue).length;
+    const rate=tt.length?Math.round(done/tt.length*100):0;
+    const score=Math.max(0,Math.min(100,Math.round(rate-overdue*4)));
+    return {ld,nteam:tids.length,total:tt.length,done,overdue,rate,score};
+  }).filter(r=>r.nteam>0).sort((a,b)=>b.score-a.score);
+  $('#kpiLeaderBody').innerHTML=leadRows.map(r=>`<tr><td class="tc">${ava(r.ld)} ${esc(r.ld.full_name)}</td><td>${r.nteam}</td><td>${r.total}</td><td>${r.done}</td>
+    <td style="color:${r.overdue?'var(--red)':'var(--muted)'}">${r.overdue}</td><td>${r.rate}%</td>
+    <td><b style="color:${kScoreColor(r.score)}">${r.total?r.score:'—'}</b></td></tr>`).join('')||'<tr><td colspan="7" class="empty">Chưa phân công lãnh đạo phụ trách tổ nào</td></tr>';
 }
 function drillMemberKpi(id){drillFilter=null;$('#filterMember').value=id;$('#filterTeam').value='';$('#filterProject').value='';renderAll();nav('tasks');}
 window.drillMemberKpi=drillMemberKpi;
@@ -781,7 +872,7 @@ function renderDashboard(){
   ].map(x=>`<div class="card stat" ${x.click?`onclick="${x.click}" style="cursor:pointer"`:''}><div class="k">${x.k}</div><div class="v">${x.v}</div><div class="sub">${x.s}</div>${x.bar!=null?`<div class="bar"><i style="width:${x.bar}%"></i></div>`:''}</div>`).join('');
 
   // Biểu đồ cột: nhãn tên mang thông tin, màu chỉ là phụ (đọc được cả khi mù màu). Bấm cột để xem nhiệm vụ.
-  const statusRows=['todo','doing','review','done'].map(s=>({label:STATUS[s].label,count:tasks.filter(t=>t.status===s).length,color:STATUS[s].color,click:`drillStatus('${s}')`}));
+  const statusRows=['todo','doing','review','done','hoan','huy'].map(s=>({label:STATUS[s].label,count:tasks.filter(t=>t.status===s).length,color:STATUS[s].color,click:`drillStatus('${s}')`}));
   const priColor={cao:'#e34948',trung:'#eda100',thap:'#2a78d6'};
   const priRows=['cao','trung','thap'].map(pp=>({label:PRI[pp].label,count:tasks.filter(t=>t.priority===pp).length,color:priColor[pp],click:`drillPriority('${pp}')`}));
   $('#dashCharts').innerHTML=barChart('📊 Nhiệm vụ theo trạng thái',statusRows)+barChart('⚡ Nhiệm vụ theo mức ưu tiên',priRows);
@@ -794,6 +885,18 @@ function renderDashboard(){
       <span style="color:var(--muted);width:120px">${td}/${tt.length} hoàn thành</span>
       <div class="bar" style="flex:1"><i style="width:${pct}%"></i></div><b style="width:44px;text-align:right">${pct}%</b></div>`;
   }).join('')||'<div class="empty">Chưa có tổ nào</div>';
+
+  // 🎂 Sinh nhật trong tháng này
+  const curMonth=new Date().getMonth()+1, today=new Date().getDate();
+  const bdays=members.filter(m=>m.birthday&&(+(''+m.birthday).slice(5,7))===curMonth)
+    .map(m=>({m,day:+(''+m.birthday).slice(8,10)})).sort((a,b)=>a.day-b.day);
+  $('#dashBirthdayWrap').style.display=bdays.length?'block':'none';
+  if(bdays.length)$('#dashBirthday').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:10px">'+bdays.map(({m,day})=>{
+    const isToday=day===today;
+    return `<div style="display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid ${isToday?'#eda100':'var(--line2)'};border-radius:10px;padding:8px 12px">
+      ${ava(m)} <div><div style="font-weight:700;font-size:13px">${esc(m.full_name)}${isToday?' 🎉':''}</div>
+      <div style="font-size:12px;color:var(--muted)">Ngày ${day}/${curMonth}${m.phone?' · ☎ '+esc(m.phone):''}</div></div></div>`;
+  }).join('')+'</div>';
 
   const urgent=tasks.filter(t=>isOverdue(t)||isSoon(t)).sort((a,b)=>new Date(a.due_date)-new Date(b.due_date));
   $('#dashUrgent').innerHTML=urgent.length?`<table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>Phụ trách</th><th>Hạn</th><th>Tình trạng</th></tr></thead><tbody>${urgent.map(t=>{const dl=daysLeft(t.due_date),o=isOverdue(t);return `<tr onclick="openTask(${t.id})" style="cursor:pointer" class="${o?'row-od':''}"><td class="tc">${esc(t.title)}</td><td>${esc(team(t.team_id)?.name||'')}</td><td>${member(t.assignee_id)?.full_name||'—'}</td><td>${fmtDate(t.due_date)}</td><td>${o?`<span class="chip pri-cao">Quá hạn ${Math.abs(dl)} ngày</span>`:`<span class="chip pri-trung">Còn ${dl} ngày</span>`}</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty">🎉 Không có nhiệm vụ quá hạn hay sắp tới hạn</div>';
@@ -814,7 +917,7 @@ function tcard(t){
     </div></div>`;
 }
 function renderKanban(){
-  const cols=['todo','doing','review','done'],list=filtered();
+  const cols=['todo','doing','review','done','hoan','huy'],list=filtered();
   $('#kanban').innerHTML=cols.map(c=>{const items=list.filter(t=>t.status===c);
     return `<div class="column"><div class="col-head"><span class="dot" style="background:${STATUS[c].color}"></span>${STATUS[c].label}<span class="count">${items.length}</span></div>
       <div class="col-body" data-col="${c}">${items.map(tcard).join('')||'<div class="empty" style="font-size:12px;padding:12px">Trống</div>'}</div></div>`;}).join('');
@@ -852,20 +955,222 @@ function renderTasks(){
       <td><div class="mini-bar"><i style="width:${t.progress}%;background:${dn?'var(--green)':'var(--accent)'}"></i></div> ${t.progress}%</td>
       <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;}).join('')||'<tr><td colspan="8" class="empty">Không có nhiệm vụ</td></tr>';
 }
-function renderTeams(){
-  const bar=isManager()?`<div style="display:flex;align-items:center;margin-bottom:12px"><div class="legend" style="margin:0"><span>Quản trị & Lãnh đạo phòng có thể thêm, sửa, xóa tổ trực tiếp tại đây.</span></div><button class="btn primary" style="margin-left:auto" onclick="openTeam(null)">＋ Thêm tổ</button></div>`:'';
-  $('#teamsView').innerHTML=bar+teams.map(tm=>{
-    const tt=filtered().filter(x=>x.team_id===tm.id);
-    const leadIds=memberTeams.filter(x=>x.team_id===tm.id&&x.is_lead).map(x=>x.profile_id);
-    const lead=members.find(m=>leadIds.includes(m.id));
-    const cnt=memberTeams.filter(x=>x.team_id===tm.id).length;
-    const edit=isManager()?`<button class="btn sm" onclick="event.stopPropagation();openTeam(${tm.id})" title="Sửa tổ">✏️</button>`:'';
-    return `<div class="section-title" style="justify-content:space-between"><span>🏥 ${esc(tm.name)} ${edit}</span>
-      <span style="font-weight:400;font-size:12px;color:var(--muted)">${lead?'Tổ trưởng: '+lead.full_name+' · ':''}${cnt} người · ${tt.length} việc</span></div>
-      <div class="card" style="padding:0;overflow:auto;margin-bottom:6px">${tt.length?`<table><tbody>${tt.map(t=>{const o=isOverdue(t),dn=t.status==='done';
-        return `<tr onclick="openTask(${t.id})" style="cursor:pointer" class="${o?'row-od':''} ${dn?'row-dn':''}"><td class="tc" style="width:40%">${esc(t.title)}</td><td>${esc(t.category||'')}</td><td>${member(t.assignee_id)?.full_name||'—'}</td><td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td><td>${t.due_date?fmtDate(t.due_date):'—'}</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty" style="padding:16px">Chưa có nhiệm vụ trong tổ này</div>'}</div>`;
-  }).join('');
+function teamBlock(tm){
+  const tt=filtered().filter(x=>x.team_id===tm.id);
+  const leadIds=memberTeams.filter(x=>x.team_id===tm.id&&x.is_lead).map(x=>x.profile_id);
+  const lead=members.find(m=>leadIds.includes(m.id));
+  const cnt=memberTeams.filter(x=>x.team_id===tm.id).length;
+  const edit=isManager()?`<button class="btn sm" onclick="event.stopPropagation();openTeam(${tm.id})" title="Sửa tổ">✏️</button>`:'';
+  return `<div class="section-title" style="justify-content:space-between"><span>🏥 ${esc(tm.name)} ${edit}</span>
+    <span style="font-weight:400;font-size:12px;color:var(--muted)">${lead?'Tổ trưởng: '+lead.full_name+' · ':''}${cnt} người · ${tt.length} việc</span></div>
+    <div class="card" style="padding:0;overflow:auto;margin-bottom:6px">${tt.length?`<table><tbody>${tt.map(t=>{const o=isOverdue(t),dn=t.status==='done';
+      return `<tr onclick="openTask(${t.id})" style="cursor:pointer" class="${o?'row-od':''} ${dn?'row-dn':''}"><td class="tc" style="width:40%">${esc(t.title)}</td><td>${esc(t.category||'')}</td><td>${member(t.assignee_id)?.full_name||'—'}</td><td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td><td>${t.due_date?fmtDate(t.due_date):'—'}</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty" style="padding:16px">Chưa có nhiệm vụ trong tổ này</div>'}</div>`;
 }
+function renderTeams(){
+  const bar=isManager()?`<div style="display:flex;align-items:center;margin-bottom:12px"><div class="legend" style="margin:0"><span>Nhóm theo Lãnh đạo phụ trách. Quản trị & Lãnh đạo phòng có thể thêm, sửa, xóa tổ.</span></div><button class="btn primary" style="margin-left:auto" onclick="openTeam(null)">＋ Thêm tổ</button></div>`:'';
+  const grouped=new Set(),groups=[];
+  leaderCandidates().forEach(ld=>{const ts=teams.filter(t=>t.leader_id===ld.id);ts.forEach(t=>grouped.add(t.id));if(ts.length)groups.push({name:'👔 LĐ phụ trách: '+ld.full_name,teams:ts});});
+  const rest=teams.filter(t=>!grouped.has(t.id));
+  if(rest.length)groups.push({name:'📋 Chưa phân công lãnh đạo',teams:rest});
+  $('#teamsView').innerHTML=bar+(groups.length?groups.map(g=>`<div style="font-weight:800;color:var(--accent);font-size:15px;margin:16px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--line)">${esc(g.name)}</div>`+g.teams.map(teamBlock).join('')).join(''):'<div class="empty">Chưa có tổ nào</div>');
+}
+/* ================= Báo cáo tháng ================= */
+const MONTHVI=['','Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+function ymLabel(ym){const[y,m]=ym.split('-');return MONTHVI[+m]+'/'+y;}
+function recentMonths(n){const out=[];const d=new Date();let y=d.getFullYear(),mo=d.getMonth()+1;for(let i=0;i<n;i++){out.push(y+'-'+String(mo).padStart(2,'0'));mo--;if(mo<1){mo=12;y--;}}return out;}
+const RSTATUS={draft:{label:'Nháp',cls:'b-todo'},submitted:{label:'Đã nộp',cls:'b-doing'},approved:{label:'Đã duyệt',cls:'b-done'}};
+function reportOf(pid,ym){return reports.find(r=>r.profile_id===pid&&r.ym===ym);}
+function monthSummary(pid,ym){
+  const mine=tasks.filter(t=>t.assignee_id===pid);
+  const doneThis=mine.filter(t=>t.status==='done'&&(''+(t.completed_at||'')).slice(0,7)===ym);
+  const open=mine.filter(t=>['todo','doing','review'].includes(t.status));
+  const overdue=mine.filter(isOverdue);
+  return {doneThis,open,overdue,total:mine.filter(t=>t.status!=='huy').length};
+}
+function summaryPanel(pid,ym){
+  const s=monthSummary(pid,ym);
+  const listChips=arr=>arr.length?arr.map(t=>`<span class="chip" style="background:var(--bg2);color:var(--txt)">${esc(t.title)}</span>`).join(' '):'<span style="color:var(--muted2);font-size:12px">—</span>';
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="flex:1;min-width:90px;background:var(--bg2);border-radius:9px;padding:8px 10px"><div style="font-size:11px;color:var(--muted)">Hoàn thành trong tháng</div><div style="font-weight:800;font-size:18px;color:var(--green)">${s.doneThis.length}</div></div>
+      <div style="flex:1;min-width:90px;background:var(--bg2);border-radius:9px;padding:8px 10px"><div style="font-size:11px;color:var(--muted)">Đang thực hiện</div><div style="font-weight:800;font-size:18px;color:#1c6fb8">${s.open.length}</div></div>
+      <div style="flex:1;min-width:90px;background:var(--bg2);border-radius:9px;padding:8px 10px"><div style="font-size:11px;color:var(--muted)">Quá hạn</div><div style="font-weight:800;font-size:18px;color:${s.overdue.length?'var(--red)':'var(--muted)'}">${s.overdue.length}</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:3px">✅ Đã hoàn thành:</div><div style="margin-bottom:8px">${listChips(s.doneThis)}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:3px">🔄 Đang làm / chưa xong:</div><div>${listChips(s.open)}</div>
+  </div>`;
+}
+function renderReport(){
+  if(!me)return;
+  const sel=$('#reportMonth'); const months=recentMonths(12);
+  if(!sel.options.length){sel.innerHTML=months.map(m=>`<option value="${m}">${ymLabel(m)}</option>`).join('');}
+  const ym=sel.value||months[0]; sel.value=ym;
+  const mr=reportOf(me.id,ym);
+  const st=mr?mr.status:'none';
+  const stBadge=mr?`<span class="badge ${RSTATUS[mr.status].cls}">${RSTATUS[mr.status].label}</span>`:'<span class="badge b-todo">Chưa làm</span>';
+  const locked=st==='approved';
+  $('#reportMine').innerHTML=`
+    <div class="section-title" style="justify-content:space-between"><span>📝 Báo cáo của tôi — ${ymLabel(ym)}</span> <span style="display:flex;align-items:center;gap:8px">${stBadge}<button class="btn sm" onclick="printReport('${me.id}','${ym}',true)">🖨️ In / Xuất</button></span></div>
+    ${summaryPanel(me.id,ym)}
+    <div class="card">
+      <div class="field"><label>① Kết quả nổi bật <button class="btn sm" style="float:right" onclick="insertDone('${ym}')">➕ Chèn việc đã hoàn thành</button></label>
+        <textarea id="rAch" rows="4" ${locked?'disabled':''} placeholder="Những việc/kết quả nổi bật trong tháng...">${esc(mr?.achievements||'')}</textarea></div>
+      <div class="field"><label>② Khó khăn – vướng mắc</label>
+        <textarea id="rDiff" rows="3" ${locked?'disabled':''} placeholder="Khó khăn, vướng mắc, kiến nghị...">${esc(mr?.difficulties||'')}</textarea></div>
+      <div class="field"><label>③ Phương hướng công việc tháng tới</label>
+        <textarea id="rPlan" rows="4" ${locked?'disabled':''} placeholder="Kế hoạch, nhiệm vụ trọng tâm tháng tới...">${esc(mr?.next_plan||'')}</textarea></div>
+      ${mr&&mr.review_note?`<div style="background:#eef6ff;border:1px solid #cfe4fb;border-radius:10px;padding:10px 12px;margin-bottom:10px"><b style="color:var(--blue,#2f6fb0)">Nhận xét của lãnh đạo:</b><br>${esc(mr.review_note)}</div>`:''}
+      ${locked?'<div style="color:var(--green);font-size:13px;font-weight:600">✓ Báo cáo đã được duyệt.</div>':
+        `<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" onclick="saveReport('draft')">💾 Lưu nháp</button><button class="btn primary" onclick="saveReport('submitted')">📤 Nộp báo cáo</button></div>`}
+    </div>`;
+  // Bảng cho lãnh đạo/tổ trưởng
+  const canReview=canManageTask()||isLeaderRole();
+  $('#reportAllWrap').style.display=canReview?'block':'none';
+  if(canReview){
+    $('#reportAllBody').innerHTML=members.map(m=>{
+      const r=reportOf(m.id,ym);
+      const b=r?`<span class="badge ${RSTATUS[r.status].cls}">${RSTATUS[r.status].label}</span>`:'<span class="badge b-huy">Chưa làm</span>';
+      const ttxt=teamIdsOf(m.id).map(id=>team(id)?.name).filter(Boolean).join(', ')||'—';
+      return `<tr onclick="openReview('${m.id}','${ym}')" style="cursor:pointer"><td class="tc">${ava(m)} ${esc(m.full_name)}</td><td>${esc(ttxt)}</td><td>${b}</td><td>${r?fmtDate((''+r.updated_at).slice(0,10)):'—'}</td></tr>`;
+    }).join('');
+  }
+  reportReminderUpdate();
+}
+function isLeaderRole(){return me&&myLeadIds().length>0;}
+window.insertDone=(ym)=>{const s=monthSummary(me.id,ym);const lines=s.doneThis.map(t=>'- '+t.title).join('\n');const ta=$('#rAch');ta.value=(ta.value.trim()?ta.value.trim()+'\n':'')+lines;};
+async function saveReport(status){
+  const ym=$('#reportMonth').value;
+  const existing=reportOf(me.id,ym);
+  const obj={profile_id:me.id,ym,achievements:$('#rAch').value.trim(),difficulties:$('#rDiff').value.trim(),next_plan:$('#rPlan').value.trim(),status};
+  try{
+    if(existing){const {error}=await sb.from('monthly_reports').update(obj).eq('id',existing.id);if(error)throw error;}
+    else{const {error}=await sb.from('monthly_reports').insert(obj);if(error)throw error;}
+    await reloadReports();renderReport();toast(status==='submitted'?'Đã nộp báo cáo':'Đã lưu nháp','ok');
+  }catch(e){toast('Lỗi: '+(e.message||e),'err');}
+}
+let reviewTarget=null;
+function openReview(pid,ym){
+  const m=member(pid);if(!m)return;
+  const r=reportOf(pid,ym);reviewTarget=r?{...r}:{profile_id:pid,ym,_new:true};
+  $('#rvTitle').textContent='Báo cáo '+ymLabel(ym)+' — '+m.full_name;
+  const canReview=canManageTask()||isLeaderRole();
+  $('#rvBody').innerHTML=summaryPanel(pid,ym)+(r?`
+    <div class="card">
+      <div style="margin-bottom:8px"><b>① Kết quả nổi bật</b><div style="white-space:pre-wrap;color:var(--txt);margin-top:3px">${esc(r.achievements)||'<span style="color:var(--muted2)">—</span>'}</div></div>
+      <div style="margin-bottom:8px"><b>② Khó khăn – vướng mắc</b><div style="white-space:pre-wrap;margin-top:3px">${esc(r.difficulties)||'<span style="color:var(--muted2)">—</span>'}</div></div>
+      <div><b>③ Phương hướng tháng tới</b><div style="white-space:pre-wrap;margin-top:3px">${esc(r.next_plan)||'<span style="color:var(--muted2)">—</span>'}</div></div>
+    </div>`:'<div class="empty" style="padding:16px">Cán bộ chưa làm báo cáo tháng này.</div>')
+    +`<div class="field" style="margin-top:10px"><label>Nhận xét của lãnh đạo</label><textarea id="rvNote" rows="3" ${(r&&canReview)?'':'disabled'} placeholder="Nhận xét, đánh giá...">${esc(r?.review_note||'')}</textarea></div>`;
+  const showBtns=!!r&&canReview;
+  $('#rvSaveNote').style.display=showBtns?'inline-flex':'none';
+  $('#rvApprove').style.display=showBtns?'inline-flex':'none';
+  $('#rvApprove').textContent=(r&&r.status==='approved')?'✓ Đã duyệt (bỏ duyệt)':'✓ Đã duyệt';
+  $('#reviewModal').classList.add('show');
+}
+window.openReview=openReview;
+async function saveReview(approve){
+  if(!reviewTarget||reviewTarget._new)return;
+  const obj={review_note:$('#rvNote').value.trim()};
+  if(approve)obj.status=(reviewTarget.status==='approved')?'submitted':'approved';
+  const {error}=await sb.from('monthly_reports').update(obj).eq('id',reviewTarget.id);
+  if(error){toast('Lỗi: '+error.message,'err');return;}
+  await reloadReports();$('#reviewModal').classList.remove('show');renderReport();toast(approve?(obj.status==='approved'?'Đã duyệt báo cáo':'Đã bỏ duyệt'):'Đã lưu nhận xét','ok');
+}
+$('#reportMonth').onchange=renderReport;
+$('#rvClose').onclick=$('#rvCancel').onclick=()=>$('#reviewModal').classList.remove('show');
+$('#reviewModal').onclick=e=>{if(e.target.id==='reviewModal')$('#reviewModal').classList.remove('show');};
+$('#rvSaveNote').onclick=()=>saveReview(false);
+$('#rvApprove').onclick=()=>saveReview(true);
+$('#rvPrint').onclick=()=>{if(reviewTarget&&!reviewTarget._new)printReport(reviewTarget.profile_id,reviewTarget.ym,false);else toast('Cán bộ chưa có báo cáo để in','err');};
+
+/* ---- In / Xuất báo cáo (mở cửa sổ in, có thể Lưu thành PDF) ---- */
+function printReport(pid,ym,useDom){
+  const m=member(pid);if(!m)return;
+  const r=reportOf(pid,ym), s=monthSummary(pid,ym);
+  let ach=r?.achievements||'', diff=r?.difficulties||'', plan=r?.next_plan||'';
+  if(useDom&&$('#rAch')){ach=$('#rAch').value;diff=$('#rDiff').value;plan=$('#rPlan').value;}
+  const roleL=roleLabel(m).label;
+  const teamsTxt=teamIdsOf(pid).map(id=>team(id)?.name).filter(Boolean).join(', ')||'—';
+  const [y,mo]=ym.split('-');
+  const li=arr=>arr.length?arr.map(t=>'<li>'+esc(t.title)+'</li>').join(''):'<li style="list-style:none;color:#666">— Không có —</li>';
+  const nl2br=t=>esc(t||'').replace(/\n/g,'<br>')||'<span style="color:#666">(chưa nhập)</span>';
+  const html='<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Báo cáo tháng '+mo+'/'+y+' - '+esc(m.full_name)+'</title>'
+   +'<style>*{box-sizing:border-box}body{font-family:"Times New Roman",serif;font-size:13.5pt;color:#000;padding:26px;max-width:820px;margin:auto;line-height:1.5}'
+   +'.c{text-align:center}h1{text-align:center;font-size:16pt;margin:16px 0}h3{font-size:13.5pt;margin:16px 0 4px}ul{margin:4px 0 4px 22px}'
+   +'.hd{display:flex;justify-content:space-between;font-size:12pt}.sig{display:flex;justify-content:flex-end;margin-top:36px;text-align:center}'
+   +'.box{white-space:normal}@media print{body{padding:0}} .btnbar{text-align:center;margin-bottom:16px}@media print{.btnbar{display:none}}</style></head><body>'
+   +'<div class="btnbar"><button onclick="window.print()" style="padding:8px 18px;font-size:13px;cursor:pointer">🖨️ In / Lưu PDF</button></div>'
+   +'<div class="hd"><div class="c" style="font-weight:bold">BỆNH VIỆN 30-4<br>PHÒNG KHTH<br>———</div>'
+   +'<div class="c">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br><b>Độc lập - Tự do - Hạnh phúc</b><br>———————</div></div>'
+   +'<h1>BÁO CÁO CÔNG TÁC THÁNG '+mo+'/'+y+'</h1>'
+   +'<p><b>Họ và tên:</b> '+esc(m.full_name)+' &nbsp; &nbsp; <b>Chức danh:</b> '+esc(m.position||'—')+'<br>'
+   +'<b>Chức vụ:</b> '+roleL+' &nbsp; &nbsp; <b>Tổ công tác:</b> '+esc(teamsTxt)+'</p>'
+   +'<p><b>Thống kê:</b> Hoàn thành trong tháng: '+s.doneThis.length+' · Đang thực hiện: '+s.open.length+' · Quá hạn: '+s.overdue.length+'</p>'
+   +'<h3>I. KẾT QUẢ CÔNG TÁC NỔI BẬT</h3><div class="box">'+nl2br(ach)+'</div>'
+   +'<p style="margin:6px 0 0;color:#333"><i>Danh sách việc đã hoàn thành:</i></p><ul>'+li(s.doneThis)+'</ul>'
+   +'<h3>II. KHÓ KHĂN – VƯỚNG MẮC</h3><div class="box">'+nl2br(diff)+'</div>'
+   +'<h3>III. PHƯƠNG HƯỚNG CÔNG TÁC THÁNG TỚI</h3><div class="box">'+nl2br(plan)+'</div>'
+   +(r&&r.review_note?'<h3>Ý KIẾN CỦA LÃNH ĐẠO</h3><div class="box">'+nl2br(r.review_note)+'</div>':'')
+   +'<div class="sig"><div>………, ngày …… tháng '+mo+' năm '+y+'<br><b>NGƯỜI BÁO CÁO</b><br><i>(Ký, ghi rõ họ tên)</i><br><br><br><br>'+esc(m.full_name)+'</div></div>'
+   +'</body></html>';
+  const w=window.open('','_blank');
+  if(!w){toast('Trình duyệt chặn cửa sổ in — hãy cho phép popup rồi thử lại','err');return;}
+  w.document.write(html);w.document.close();w.focus();
+}
+window.printReport=printReport;
+
+/* ---- Nhắc làm báo cáo 3 ngày cuối tháng (nếu chưa nộp) ---- */
+let reportRemindNotified=false, reportRemindDismissed=false;
+function curYM(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function daysToMonthEnd(){const d=new Date();const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();return last-d.getDate();}
+function reportReminderUpdate(){
+  const banner=$('#reportReminder'), dot=$('#reportNavDot');
+  if(!me){banner.style.display='none';if(dot)dot.style.display='none';return;}
+  const ym=curYM(), mr=reportOf(me.id,ym);
+  const submitted=mr&&(mr.status==='submitted'||mr.status==='approved');
+  const inWindow=daysToMonthEnd()<=2; // 3 ngày cuối tháng
+  const need=inWindow&&!submitted;
+  if(dot)dot.style.display=need?'inline-block':'none';
+  banner.style.display=(need&&!reportRemindDismissed)?'flex':'none';
+  if(need&&!reportRemindDismissed){
+    $('#reportReminderTxt').textContent='Còn '+(daysToMonthEnd()+1)+' ngày là hết tháng — bạn chưa nộp Báo cáo tháng '+(new Date().getMonth()+1)+'. Hãy hoàn thành nhé!';
+    if(!reportRemindNotified){reportRemindNotified=true;
+      if('Notification' in window && Notification.permission==='granted'){try{new Notification('Nhắc làm báo cáo tháng',{body:'Bạn chưa nộp báo cáo tháng này. Hãy hoàn thành trước khi hết tháng.'});}catch(e){}}
+    }
+  }
+}
+window.dismissReportReminder=()=>{reportRemindDismissed=true;$('#reportReminder').style.display='none';};
+
+function renderGantt(){
+  const gp=$('#ganttProject'), cur=gp.value;
+  gp.innerHTML='<option value="">Tất cả nhiệm vụ</option>'+projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  gp.value=cur;
+  const pid=gp.value;
+  const rows0=tasks.filter(t=>(!pid||String(t.project_id)===pid)).map(t=>{
+    const s=t.start_date||t.due_date, e=t.due_date||t.start_date;
+    if(!s&&!e)return null;
+    return {t,s:new Date(s),e:new Date(e)};
+  }).filter(Boolean);
+  if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Chưa có nhiệm vụ nào có ngày bắt đầu / hạn chót để vẽ Gantt.<br>Hãy mở nhiệm vụ và điền <b>Ngày bắt đầu</b> và <b>Hạn chót</b>.</div>';return;}
+  let min=Math.min(...rows0.map(x=>x.s.getTime())), max=Math.max(...rows0.map(x=>x.e.getTime()));
+  if(max<=min)max=min+86400000;
+  const span=max-min;
+  rows0.sort((a,b)=>a.s-b.s);
+  const iso=ms=>new Date(ms).toISOString().slice(0,10);
+  const body=rows0.map(({t,s,e})=>{
+    const left=(s.getTime()-min)/span*100, width=Math.max(1.5,(e.getTime()-s.getTime())/span*100);
+    const col=STATUS[t.status].color, od=isOverdue(t);
+    const rng=fmtDate(iso(s.getTime()))+' → '+fmtDate(iso(e.getTime()));
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)">
+      <div style="width:190px;flex:0 0 190px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openTask(${t.id})" title="${esc(t.title)}">${esc(t.title)}</div>
+      <div style="flex:1;position:relative;height:22px;background:var(--bg2);border-radius:5px;min-width:200px">
+        <div onclick="openTask(${t.id})" title="${esc(t.title)} · ${rng}" style="position:absolute;left:${left}%;width:${width}%;top:3px;height:16px;background:${col};border-radius:4px;cursor:pointer;${od?'box-shadow:0 0 0 2px var(--red)':''}"></div>
+      </div></div>`;
+  }).join('');
+  $('#ganttView').innerHTML=`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin:0 0 8px 198px"><span>${fmtDate(iso(min))}</span><span>${fmtDate(iso(max))}</span></div>`+body
+    +`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)">${['todo','doing','review','done','hoan','huy'].map(s=>`<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:${STATUS[s].color};display:inline-block"></i>${STATUS[s].label}</span>`).join('')}</div>`;
+}
+$('#ganttProject')&&($('#ganttProject').onchange=renderGantt);
 let calDate=new Date();
 function renderCalendar(){
   const y=calDate.getFullYear(),mo=calDate.getMonth();
@@ -880,9 +1185,13 @@ function renderCalendar(){
       ${evs.length>4?`<div style="font-size:11px;color:var(--muted2)">+${evs.length-4}</div>`:''}</div>`;}
   $('#calGrid').innerHTML=html;
 }
+function fmtBirth(b){if(!b)return '—';const s=''+b;return s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4);}
 function renderStaff(){
+  const canEditStaff=canManageStaff();
+  $('#btnAddUser').classList.toggle('hidden',!canEditStaff);
+  $('#staffNote').textContent=canEditStaff?'Trưởng/Phó phòng & Trợ lý thêm/sửa nhân sự; chỉ Lãnh đạo/Quản trị mới xóa được.':'Danh sách cán bộ trong phòng (chỉ xem).';
   $('#staffBody').innerHTML=members.map(m=>{const r=roleLabel(m);
-    return `<tr onclick="openStaff('${m.id}')" style="cursor:pointer"><td class="tc">${ava(m)} ${esc(m.full_name)}</td><td>${esc(m.email||'')}</td><td>${teamsChips(m.id)}</td><td><span class="role-badge ${r.cls}">${r.label}</span></td><td>${esc(m.position||'')}</td></tr>`;}).join('');
+    return `<tr onclick="openStaffDetail('${m.id}')" style="cursor:pointer"><td class="tc">${ava(m)} ${esc(m.full_name)}</td><td>${esc(m.email||'')}</td><td>${teamsChips(m.id)}</td><td><span class="role-badge ${r.cls}">${r.label}</span></td><td>${esc(m.position||'')}</td><td>${esc(m.phone||'—')}</td><td>${fmtBirth(m.birthday)}</td></tr>`;}).join('');
 }
 function drillTeam(id){drillFilter=null;$('#filterTeam').value=id;$('#filterMember').value='';$('#filterProject').value='';renderAll();nav('tasks');toast('Lọc theo tổ','ok');}
 window.drillTeam=drillTeam;
@@ -943,10 +1252,13 @@ async function deleteProject(){
 
 /* ================= Team (Tổ) modal ================= */
 let editTeamId=null;
+function leaderCandidates(){return members.filter(m=>['truong_phong','pho_truong_phong','admin'].includes(m.role));}
 function openTeam(id){
   if(!isManager())return;editTeamId=id;const t=id?team(id):null;
   $('#tmoTitle').textContent=t?'Chỉnh sửa tổ':'Tổ mới';
   $('#toName').value=t?.name||'';$('#toDesc').value=t?.description||'';
+  $('#toLeader').innerHTML='<option value="">— Chưa phân công —</option>'+leaderCandidates().map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('');
+  $('#toLeader').value=t?.leader_id||'';
   $('#toOrder').value=(t?.sort_order??(teams.length+1));
   $('#tmoDelete').style.display=t?'inline-flex':'none';
   $('#teamModal').classList.add('show');
@@ -954,7 +1266,7 @@ function openTeam(id){
 window.openTeam=openTeam;
 async function saveTeam(){
   const name=$('#toName').value.trim();if(!name){toast('Nhập tên tổ','err');return;}
-  const obj={name,description:$('#toDesc').value.trim(),sort_order:parseInt($('#toOrder').value)||0};
+  const obj={name,description:$('#toDesc').value.trim(),leader_id:$('#toLeader').value||null,sort_order:parseInt($('#toOrder').value)||0};
   try{
     if(editTeamId){const {error}=await sb.from('teams').update(obj).eq('id',editTeamId);if(error)throw error;}
     else{const {error}=await sb.from('teams').insert(obj);if(error)throw error;}
@@ -994,13 +1306,13 @@ async function openTask(id){
   $('#fTeam').value=t?.team_id||(myLeadIds()[0]||me.teamIds?.[0]||teams[0]?.id||'');$('#fCat').value=t?.category||'';
   $('#fProject').value=t?.project_id||'';
   $('#fAssignee').value=t?.assignee_id||'';$('#fStatus').value=t?.status||'todo';
-  $('#fPriority').value=t?.priority||'trung';$('#fDue').value=t?.due_date||'';$('#fProgress').value=t?.progress??0;
+  $('#fPriority').value=t?.priority||'trung';$('#fStart').value=t?.start_date||'';$('#fDue').value=t?.due_date||'';$('#fProgress').value=t?.progress??0;
   const editable=t?canEdit(t):canCreate();
   // Nhân viên tự tạo việc mới: khóa "Chịu trách nhiệm chính" = chính mình, không giao cho người khác
   const lockAssignee=!t&&editable&&!canAssignOthers();
   // Nhân viên tự tạo việc VẪN chọn được "Người phối hợp" (họ là người phụ trách nên có quyền)
   renderCollabChecks(t?collabIdsOf(id):[], !editable);
-  ['fTitle','fDesc','fTeam','fCat','fAssignee','fStatus','fPriority','fDue','fProgress'].forEach(f=>$('#'+f).disabled=!editable);
+  ['fTitle','fDesc','fTeam','fCat','fAssignee','fStatus','fPriority','fStart','fDue','fProgress'].forEach(f=>$('#'+f).disabled=!editable);
   if(lockAssignee){$('#fAssignee').value=me.id;$('#fAssignee').disabled=true;}
   $('#tmSave').style.display=editable?'inline-flex':'none';
   $('#tmDelete').style.display=(t&&canDelete(t))?'inline-flex':'none';
@@ -1020,7 +1332,7 @@ async function saveTask(){
   const title=$('#fTitle').value.trim();if(!title){toast('Nhập tên nhiệm vụ','err');return;}
   let prog=parseInt($('#fProgress').value)||0;const st=$('#fStatus').value;if(st==='done')prog=100;
   const obj={title,description:$('#fDesc').value.trim(),team_id:+$('#fTeam').value||null,project_id:+$('#fProject').value||null,category:$('#fCat').value.trim(),
-    assignee_id:$('#fAssignee').value||null,status:st,priority:$('#fPriority').value,due_date:$('#fDue').value||null,progress:prog};
+    assignee_id:$('#fAssignee').value||null,status:st,priority:$('#fPriority').value,start_date:$('#fStart').value||null,due_date:$('#fDue').value||null,progress:prog};
   $('#tmSave').disabled=true;
   try{
     const wasNew=!editId;let taskId=editId;
@@ -1045,21 +1357,30 @@ async function deleteTask(){
 }
 
 /* ---- Subtasks ---- */
+const SUBSTAT={todo:'Cần làm',doing:'Đang làm',done:'Hoàn thành'};
 async function loadSubtasks(taskId){
   const {data}=await sb.from('subtasks').select('*').eq('task_id',taskId).order('created_at');
   const list=data||[];
-  $('#subList').innerHTML=list.map(s=>`<div class="st-item ${s.done?'done':''}">
-    <input type="checkbox" ${s.done?'checked':''} onchange="toggleSub(${s.id},this.checked)">
-    <span class="txt">${esc(s.content)}</span>
-    <button class="btn sm danger" onclick="delSub(${s.id})">✕</button></div>`).join('')||'<div class="empty" style="padding:12px;font-size:12px">Chưa có ghi chú nào</div>';
+  $('#subList').innerHTML=list.map(s=>{
+    const st=s.status||(s.done?'done':'todo'), dn=st==='done';
+    const od=!dn&&s.due_date&&s.due_date<todayStr();
+    const opts=Object.entries(SUBSTAT).map(([v,l])=>`<option value="${v}" ${st===v?'selected':''}>${l}</option>`).join('');
+    return `<div class="st-item ${dn?'done':''}" style="flex-wrap:wrap;gap:6px;align-items:center">
+      <select onchange="setSubStatus(${s.id},this.value)" style="font-size:12px;padding:3px 6px;border-radius:7px">${opts}</select>
+      <span class="txt" style="flex:1;min-width:120px">${esc(s.content)}</span>
+      <input type="date" value="${s.due_date||''}" onchange="setSubDue(${s.id},this.value)" title="Hạn hoàn thành" style="font-size:12px;padding:2px 5px;border-radius:7px;${od?'color:var(--red);border-color:var(--red)':''}">
+      ${od?'<span class="chip pri-cao" style="font-size:10px">trễ</span>':''}
+      <button class="btn sm danger" onclick="delSub(${s.id})">✕</button></div>`;
+  }).join('')||'<div class="empty" style="padding:12px;font-size:12px">Chưa có việc con nào</div>';
 }
 $('#subAdd').onclick=async()=>{
   const v=$('#subInput').value.trim();if(!v||!editId)return;
-  const {error}=await sb.from('subtasks').insert({task_id:editId,content:v});
+  const {error}=await sb.from('subtasks').insert({task_id:editId,content:v,status:'todo',due_date:$('#subDue').value||null});
   if(error){toast('Lỗi: '+error.message,'err');return;}
-  $('#subInput').value='';loadSubtasks(editId);
+  $('#subInput').value='';$('#subDue').value='';loadSubtasks(editId);
 };
-window.toggleSub=async(id,done)=>{await sb.from('subtasks').update({done}).eq('id',id);loadSubtasks(editId);};
+window.setSubStatus=async(id,status)=>{const {error}=await sb.from('subtasks').update({status}).eq('id',id);if(error){toast('Lỗi: '+error.message,'err');return;}loadSubtasks(editId);};
+window.setSubDue=async(id,due_date)=>{await sb.from('subtasks').update({due_date:due_date||null}).eq('id',id);loadSubtasks(editId);};
 window.delSub=async(id)=>{await sb.from('subtasks').delete().eq('id',id);loadSubtasks(editId);};
 
 /* ---- Comments (realtime) ---- */
@@ -1132,6 +1453,57 @@ window.delAtt=async(id,path)=>{
   loadAttachments(editId);toast('Đã xóa tệp','ok');
 };
 
+/* ============ Chi tiết công việc theo cán bộ ============ */
+function sdTaskRow(t){
+  const o=isOverdue(t),dn=t.status==='done',dl=daysLeft(t.due_date);
+  return `<tr onclick="openStaffTask(${t.id})" style="cursor:pointer" class="${o?'row-od':''} ${dn?'row-dn':''}">
+    <td class="tc">${esc(t.title)}</td>
+    <td>${esc(team(t.team_id)?.name||'—')}</td>
+    <td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td>
+    <td><span class="chip ${PRI[t.priority].cls}">${PRI[t.priority].label}</span></td>
+    <td><div class="mini-bar" style="display:inline-block;width:60px"><i style="width:${t.progress}%;background:${dn?'var(--green)':'var(--accent)'}"></i></div> ${t.progress}%</td>
+    <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;
+}
+window.openStaffTask=(id)=>{$('#staffDetailModal').classList.remove('show');openTask(id);};
+function openStaffDetail(id){
+  const m=member(id);if(!m)return;sdDetailId=id;
+  const r=roleLabel(m);
+  const assigned=tasks.filter(t=>t.assignee_id===id);
+  const collab=tasks.filter(t=>t.assignee_id!==id&&collabIdsOf(t.id).includes(id));
+  const cnt=assigned.filter(t=>t.status!=='huy');
+  const done=cnt.filter(t=>t.status==='done').length;
+  const doing=cnt.filter(t=>t.status==='doing').length;
+  const overdue=cnt.filter(isOverdue).length;
+  const rate=cnt.length?Math.round(done/cnt.length*100):0;
+  const teamsTxt=teamIdsOf(id).map(tid=>team(tid)?.name).filter(Boolean).join(', ')||'Chưa phân tổ';
+  const stat=(k,v,c)=>`<div style="flex:1;min-width:88px;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:9px 11px"><div style="font-size:11px;color:var(--muted)">${k}</div><div style="font-weight:800;font-size:19px;color:${c||'var(--txt)'}">${v}</div></div>`;
+  const listTable=(rows,empty)=>rows.length?`<div class="card" style="padding:0;overflow:auto;margin-bottom:4px"><table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody>${rows.map(sdTaskRow).join('')}</tbody></table></div>`:`<div class="empty" style="padding:14px">${empty}</div>`;
+  $('#sdTitle').textContent='Công việc của '+m.full_name;
+  $('#sdBody').innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+      ${ava(m)}
+      <div style="flex:1;min-width:180px">
+        <div style="font-weight:800;font-size:16px">${esc(m.full_name)} <span class="role-badge ${r.cls}">${r.label}</span></div>
+        <div style="color:var(--muted);font-size:12px;margin-top:3px">${esc(m.position||'')}${m.position?' · ':''}🏥 ${esc(teamsTxt)}</div>
+        <div style="color:var(--muted);font-size:12px;margin-top:2px">${m.phone?'☎ '+esc(m.phone):''}${m.phone&&m.birthday?' · ':''}${m.birthday?'🎂 '+fmtBirth(m.birthday):''}${m.email?' · ✉ '+esc(m.email):''}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      ${stat('Tổng việc',cnt.length)}${stat('Đang làm',doing,'#1c6fb8')}${stat('Hoàn thành',done,'var(--green)')}${stat('Quá hạn',overdue,overdue?'var(--red)':'var(--muted)')}${stat('Tỉ lệ HT',rate+'%')}
+    </div>
+    <div class="section-title" style="font-size:14px">📌 Chịu trách nhiệm chính (${assigned.length})</div>
+    ${listTable(assigned,'Không có nhiệm vụ nào được giao chính.')}
+    <div class="section-title" style="font-size:14px;margin-top:14px">🤝 Phối hợp (${collab.length})</div>
+    ${listTable(collab,'Không tham gia phối hợp nhiệm vụ nào.')}`;
+  $('#sdEdit').classList.toggle('hidden',!canManageStaff());
+  $('#staffDetailModal').classList.add('show');
+}
+window.openStaffDetail=openStaffDetail;
+let sdDetailId=null;
+$('#sdClose').onclick=$('#sdCancel').onclick=()=>$('#staffDetailModal').classList.remove('show');
+$('#staffDetailModal').onclick=e=>{if(e.target.id==='staffDetailModal')$('#staffDetailModal').classList.remove('show');};
+$('#sdEdit').onclick=()=>{$('#staffDetailModal').classList.remove('show');openStaff(sdDetailId);};
+
 /* ================= Staff modal ================= */
 let staffId=null;
 function openStaff(id){
@@ -1143,6 +1515,8 @@ function openStaff(id){
   $('#smRole').value=m.role||'nhan_vien';
   $('#smRole').disabled=!isManager()||(m.role==='admin'&&!isSysAdmin()); // trợ lý không đổi vai trò; chỉ admin đụng được tài khoản admin
   $('#smPos').value=m.position||'';
+  $('#smPhone').value=m.phone||'';$('#smBirth').value=m.birthday||'';
+  $('#smDelete').classList.toggle('hidden',!(isManager()&&id!==me.id&&(m.role!=='admin'||isSysAdmin())));
   const tids=teamIdsOf(id),lids=leadIdsOf(id);
   $('#smTeams').innerHTML=teams.map(t=>`<div class="st-item" style="background:var(--bg2)">
       <input type="checkbox" class="smMem" data-tid="${t.id}" ${tids.includes(t.id)?'checked':''} onchange="smToggleMem(${t.id})">
@@ -1157,7 +1531,7 @@ window.openStaff=openStaff;
 window.smToggleMem=(tid)=>{const mem=document.querySelector(`.smMem[data-tid="${tid}"]`).checked;const lead=document.querySelector(`.smLead[data-tid="${tid}"]`);if(!mem)lead.checked=false;};
 $('#smSave').onclick=async()=>{
   // 1) cập nhật hồ sơ
-  const patch={full_name:$('#smName').value.trim(),role:$('#smRole').value,position:$('#smPos').value.trim()};
+  const patch={full_name:$('#smName').value.trim(),role:$('#smRole').value,position:$('#smPos').value.trim(),phone:$('#smPhone').value.trim(),birthday:$('#smBirth').value||null};
   const {error}=await sb.from('profiles').update(patch).eq('id',staffId);
   if(error){toast('Lỗi hồ sơ: '+error.message,'err');return;}
   // 2) cập nhật quan hệ tổ: xóa hết rồi thêm lại theo lựa chọn
@@ -1173,6 +1547,35 @@ $('#smSave').onclick=async()=>{
   toast('Đã cập nhật nhân sự','ok');
 };
 $('#smClose').onclick=$('#smCancel').onclick=()=>$('#staffModal').classList.remove('show');
+$('#smDelete').onclick=async()=>{
+  if(!staffId||staffId===me.id)return;
+  const m=member(staffId);
+  if(!confirm('Xóa hồ sơ "'+(m?.full_name||'')+'"? Người này sẽ không còn trong danh sách và bị gỡ khỏi các tổ. Các việc đã giao sẽ không còn người phụ trách (không bị xóa việc). Lưu ý: tài khoản đăng nhập vẫn tồn tại, cần Quản trị xóa riêng nếu muốn.'))return;
+  const {error}=await sb.from('profiles').delete().eq('id',staffId);
+  if(error){toast('Lỗi xóa: '+error.message,'err');return;}
+  members=members.filter(x=>x.id!==staffId);
+  memberTeams=memberTeams.filter(x=>x.profile_id!==staffId);
+  $('#staffModal').classList.remove('show');renderAll();toast('Đã xóa hồ sơ nhân sự','ok');
+};
+
+/* ================= Hồ sơ của tôi ================= */
+function openProfile(){
+  $('#prName').value=me.full_name||'';$('#prPhone').value=me.phone||'';$('#prBirth').value=me.birthday||'';
+  $('#prPos').value=me.position||'';$('#prRole').value=roleLabel(me).label;
+  $('#profileModal').classList.add('show');
+}
+async function saveProfile(){
+  const patch={full_name:$('#prName').value.trim(),phone:$('#prPhone').value.trim(),birthday:$('#prBirth').value||null,position:$('#prPos').value.trim()};
+  if(!patch.full_name){toast('Nhập họ tên','err');return;}
+  const {error}=await sb.from('profiles').update(patch).eq('id',me.id);
+  if(error){toast('Lỗi: '+error.message,'err');return;}
+  Object.assign(me,patch);const mm=member(me.id);if(mm)Object.assign(mm,patch);
+  $('#profileModal').classList.remove('show');renderUserBox();renderAll();toast('Đã cập nhật hồ sơ','ok');
+}
+$('#btnProfile').onclick=openProfile;
+$('#prSave').onclick=saveProfile;
+$('#prClose').onclick=$('#prCancel').onclick=()=>$('#profileModal').classList.remove('show');
+$('#profileModal').onclick=e=>{if(e.target.id==='profileModal')$('#profileModal').classList.remove('show');};
 
 /* ================= Thêm nhân viên (tạo tài khoản) ================= */
 function openAddUser(){
@@ -1198,7 +1601,7 @@ async function submitAddUser(){
   $('#auSave').disabled=true;$('#auSave').innerHTML='<span class="spin"></span>';
   try{
     const {data,error}=await sb.functions.invoke('create-user',{body:{full_name,email,password,position,role,teams:teamsSel}});
-    if(error){let msg=error.message;try{const c=await error.context.json();if(c&&c.error)msg=c.error;}catch(e){}throw new Error(msg);}
+    if(error)throw new Error(await edgeErrMsg(error,'create-user'));
     if(data&&data.error)throw new Error(data.error);
     toast('Đã tạo tài khoản cho '+full_name,'ok');
     $('#addUserModal').classList.remove('show');
@@ -1227,13 +1630,29 @@ $('#pwSave').onclick=async()=>{
 };
 
 /* ===== Admin đặt lại mật khẩu cho nhân viên ===== */
+// Bóc tách lỗi thật từ Edge Function (mã HTTP + nội dung) thay vì báo chung chung
+async function edgeErrMsg(error,fnName){
+  let m=error?.message||String(error);
+  try{
+    const resp=error?.context;
+    if(resp&&typeof resp.clone==='function'){
+      const status=resp.status;
+      let body='';try{body=await resp.clone().text();}catch(_){}
+      let d=body;try{const j=JSON.parse(body);d=j.error||j.msg||j.message||body;}catch(_){}
+      m=(status?('['+status+'] '):'')+(d||m);
+      if(status===404)m+=` — Có thể Edge Function "${fnName}" chưa được triển khai trên Supabase.`;
+      else if(status===401)m+=' — Phiên đăng nhập không hợp lệ, hãy đăng nhập lại.';
+    }
+  }catch(_){}
+  return m;
+}
 $('#smResetPass').onclick=async()=>{
   const np=$('#smNewPass').value.trim();
   if(np.length<6){toast('Mật khẩu tối thiểu 6 ký tự','err');return;}
   $('#smResetPass').disabled=true;
   try{
     const {data,error}=await sb.functions.invoke('reset-password',{body:{user_id:staffId,password:np}});
-    if(error){let m=error.message;try{const c=await error.context.json();if(c&&c.error)m=c.error;}catch(e){}throw new Error(m);}
+    if(error)throw new Error(await edgeErrMsg(error,'reset-password'));
     if(data&&data.error)throw new Error(data.error);
     toast('Đã đặt lại mật khẩu','ok');$('#smNewPass').value='';
   }catch(err){toast('Lỗi: '+(err.message||err),'err');}
@@ -1287,7 +1706,7 @@ function requestNotifPerm(){
 
 
 /* ================= Navigation & wiring ================= */
-const TITLES={dashboard:'Tổng quan',kanban:'Bảng Kanban',tasks:'Danh sách nhiệm vụ',teams:'Công việc theo tổ',projects:'Dự án',calendar:'Lịch công việc',kpi:'KPI & Thống kê',staff:'Quản lý nhân sự'};
+const TITLES={dashboard:'Tổng quan',kanban:'Bảng Kanban',tasks:'Danh sách nhiệm vụ',teams:'Công việc theo tổ',projects:'Dự án',calendar:'Lịch công việc',kpi:'KPI & Thống kê',report:'Báo cáo tháng',gantt:'Sơ đồ Gantt',staff:'Danh sách nhân sự'};
 function nav(v){$$('.nav-item[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));$$('.view').forEach(s=>s.classList.remove('active'));$('#view-'+v).classList.add('active');$('#viewTitle').textContent=TITLES[v];$('#sidebar').classList.remove('open');}
 window.nav=nav;
 
@@ -1315,7 +1734,7 @@ $('#calPrev').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCalendar
 $('#calNext').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCalendar();};
 $('#calToday').onclick=()=>{calDate=new Date();renderCalendar();};
 $('#subInput')&&($('#subInput').onkeydown=e=>{if(e.key==='Enter')$('#subAdd').click();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');$('#teamModal').classList.remove('show');}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');$('#teamModal').classList.remove('show');$('#profileModal').classList.remove('show');$('#staffDetailModal').classList.remove('show');$('#reviewModal').classList.remove('show');}});
 
 /* ================= Start ================= */
 async function start(){
