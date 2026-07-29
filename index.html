@@ -198,6 +198,8 @@
   .st-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border:1px solid var(--line);border-radius:9px;margin-bottom:7px}
   .st-item input[type=checkbox]{width:17px;height:17px;flex-shrink:0}
   .st-item.done span{text-decoration:line-through;color:var(--muted2)}
+  #collabPanel input[type=checkbox]{width:17px;height:17px;flex:0 0 auto}
+  #collabPanel label{margin:0}
   .st-item .txt{flex:1}
   .cmt{display:flex;gap:10px;margin-bottom:12px}
   .cmt .body{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
@@ -336,7 +338,7 @@
       <section class="view" id="view-tasks">
         <div id="taskFilterBar" style="margin-bottom:10px;display:none"></div>
         <div class="card" style="padding:0;overflow:auto">
-          <table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>Loại</th><th>Phụ trách</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody id="taskBody"></tbody></table>
+          <table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>Loại</th><th>Phụ trách</th><th>Người phối hợp</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody id="taskBody"></tbody></table>
         </div>
       </section>
       <section class="view" id="view-teams"><div id="teamsView"></div></section>
@@ -976,12 +978,13 @@ function renderTasks(){
   }else{fb.style.display='none';fb.innerHTML='';}
   const list=filtered().slice().sort((a,b)=>new Date(a.due_date||'2999')-new Date(b.due_date||'2999'));
   $('#taskBody').innerHTML=list.map(t=>{const m=member(t.assignee_id),o=isOverdue(t),dn=t.status==='done',dl=daysLeft(t.due_date);
+    const collab=collabIdsOf(t.id).map(id=>member(id)?.full_name).filter(Boolean).join(', ');
     return `<tr class="${o?'row-od':''} ${dn?'row-dn':''}" onclick="openTask(${t.id})" style="cursor:pointer">
       <td class="tc">${esc(t.title)}</td><td>${esc(team(t.team_id)?.name||'')}</td><td>${esc(t.category||'')}</td>
-      <td>${m?m.full_name:'—'}</td><td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td>
+      <td>${m?esc(m.full_name):'—'}</td><td>${collab?esc(collab):'—'}</td><td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td>
       <td><span class="chip ${PRI[t.priority].cls}">${PRI[t.priority].label}</span></td>
       <td><div class="mini-bar"><i style="width:${t.progress}%;background:${dn?'var(--green)':'var(--accent)'}"></i></div> ${t.progress}%</td>
-      <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;}).join('')||'<tr><td colspan="8" class="empty">Không có nhiệm vụ</td></tr>';
+      <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty">Không có nhiệm vụ</td></tr>';
 }
 function teamBlock(tm){
   const tt=filtered().filter(x=>x.team_id===tm.id);
@@ -1354,8 +1357,8 @@ window.openTask=openTask;
 let collabDisabled=false;
 function renderCollabChecks(selected,disabled){
   const sel=new Set(selected);collabDisabled=disabled;
-  $('#collabPanel').innerHTML=members.length?members.map(m=>`<label style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;font-size:13px;font-weight:400;color:var(--txt);cursor:${disabled?'default':'pointer'}">
-    <input type="checkbox" class="collabChk" value="${m.id}" ${sel.has(m.id)?'checked':''} ${disabled?'disabled':''} onchange="updateCollabSummary()" style="flex:0 0 auto"> ${esc(m.full_name)}</label>`).join(''):'<div style="color:var(--muted2);padding:8px">Chưa có nhân sự</div>';
+  $('#collabPanel').innerHTML=members.length?members.map(m=>`<label style="display:flex;align-items:center;justify-content:flex-start;text-align:left;gap:9px;padding:8px 10px;border-radius:7px;font-size:13px;font-weight:400;color:var(--txt);white-space:nowrap;cursor:${disabled?'default':'pointer'}">
+    <input type="checkbox" class="collabChk" value="${m.id}" ${sel.has(m.id)?'checked':''} ${disabled?'disabled':''} onchange="updateCollabSummary()" style="flex:0 0 auto;margin:0"><span style="white-space:nowrap">${esc(m.full_name)}</span></label>`).join(''):'<div style="color:var(--muted2);padding:8px">Chưa có nhân sự</div>';
   $('#collabPanel').style.display='none';
   $('#collabControl').style.opacity=disabled?'.6':'1';
   $('#collabControl').style.cursor=disabled?'default':'pointer';
