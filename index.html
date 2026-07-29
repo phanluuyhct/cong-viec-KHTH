@@ -386,7 +386,13 @@
         <div class="field"><label>Chịu trách nhiệm chính</label><select id="fAssignee"></select></div>
       </div>
       <div class="field"><label>Người phối hợp (chọn nhiều)</label>
-        <div id="fCollab" style="display:flex;flex-wrap:wrap;gap:8px;max-height:120px;overflow:auto;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:10px"></div>
+        <div id="collabDropdown" style="position:relative">
+          <div id="collabControl" onclick="toggleCollabPanel()" style="border:1px solid var(--line2);border-radius:10px;padding:9px 12px;background:var(--bg2);cursor:pointer;min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span id="collabSummary" style="color:var(--muted);font-size:13px;line-height:1.4">— Chọn người phối hợp —</span>
+            <span id="collabCaret" style="color:var(--muted);flex:0 0 auto">▾</span>
+          </div>
+          <div id="collabPanel" style="display:none;position:absolute;z-index:20;left:0;right:0;top:46px;max-height:220px;overflow:auto;background:var(--card);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow);padding:6px"></div>
+        </div>
       </div>
       <div class="field"><label>Loại công việc</label><input id="fCat" placeholder="VD: Khám DN, Tuyển sinh, Đi nước ngoài..."></div>
       <div class="three">
@@ -658,9 +664,16 @@ $('#aSubmit').onclick=async()=>{
   try{
     if(signupMode){
       if(!name){throw new Error('Nhập họ tên');}
+      // Kiểm tra email đã có tài khoản chưa (nếu đã cài hàm email_exists)
+      try{const {data:exists,error:ce}=await sb.rpc('email_exists',{p_email:email});if(!ce&&exists){const e=new Error('dup');e.dup=true;throw e;}}catch(chk){if(chk&&chk.dup)throw chk;}
       const roleSel=$('#aRole').value||'nhan_vien', teamSel=$('#aTeam').value;
-      const {error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,role:roleSel,team_id:teamSel||null,phone:$('#aPhone').value.trim(),birthday:$('#aBirth').value||null}}});
-      if(error)throw error;
+      const {data:su,error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,role:roleSel,team_id:teamSel||null,phone:$('#aPhone').value.trim(),birthday:$('#aBirth').value||null}}});
+      if(error){
+        if(/already|registered|exists|duplicate/i.test(error.message)){const e=new Error('dup');e.dup=true;throw e;}
+        throw error;
+      }
+      // Xác nhận email đang bật: email đã tồn tại sẽ trả về user với identities rỗng
+      if(su&&su.user&&Array.isArray(su.user.identities)&&su.user.identities.length===0){const e=new Error('dup');e.dup=true;throw e;}
       toast('Đăng ký thành công! Đang đăng nhập...','ok');
     }
     const {data:sd,error:e2}=await sb.auth.signInWithPassword({email,password:pass});
@@ -670,6 +683,13 @@ $('#aSubmit').onclick=async()=>{
     await loadMe();            // <-- tải dữ liệu & vào thẳng giao diện sau khi đăng nhập
   }catch(err){
     $('#loading').classList.add('hidden');
+    if(err&&err.dup){
+      if(signupMode)toggleSignup();        // chuyển về màn Đăng nhập, giữ nguyên email
+      $('#authErr').textContent='⚠️ Đã có tài khoản với email này. Vui lòng đăng nhập.';
+      $('#authErr').style.display='block';
+      $('#aSubmit').disabled=false;$('#aSubmit').textContent='Đăng nhập';
+      return;
+    }
     let m=err.message||String(err);
     if(/invalid login/i.test(m))m='Sai email hoặc mật khẩu';
     else if(/email not confirmed/i.test(m))m='Email chưa được xác nhận — hãy tắt "Confirm email" trong Supabase';
@@ -1252,7 +1272,7 @@ async function deleteProject(){
 
 /* ================= Team (Tổ) modal ================= */
 let editTeamId=null;
-function leaderCandidates(){return members.filter(m=>['truong_phong','pho_truong_phong','admin'].includes(m.role));}
+function leaderCandidates(){return members.filter(m=>['truong_phong','pho_truong_phong'].includes(m.role));}
 function openTeam(id){
   if(!isManager())return;editTeamId=id;const t=id?team(id):null;
   $('#tmoTitle').textContent=t?'Chỉnh sửa tổ':'Tổ mới';
@@ -1321,11 +1341,25 @@ async function openTask(id){
   if(t){loadSubtasks(id);loadComments(id);loadAttachments(id);subscribeComments(id);}
 }
 window.openTask=openTask;
+let collabDisabled=false;
 function renderCollabChecks(selected,disabled){
-  const sel=new Set(selected);
-  $('#fCollab').innerHTML=members.map(m=>`<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;background:var(--card);padding:5px 9px;border-radius:8px;cursor:${disabled?'default':'pointer'}">
-    <input type="checkbox" class="collabChk" value="${m.id}" ${sel.has(m.id)?'checked':''} ${disabled?'disabled':''}> ${esc(m.full_name)}</label>`).join('')||'<span style="color:var(--muted2)">Chưa có nhân sự</span>';
+  const sel=new Set(selected);collabDisabled=disabled;
+  $('#collabPanel').innerHTML=members.map(m=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;font-size:13px;cursor:${disabled?'default':'pointer'}">
+    <input type="checkbox" class="collabChk" value="${m.id}" ${sel.has(m.id)?'checked':''} ${disabled?'disabled':''} onchange="updateCollabSummary()"> ${esc(m.full_name)}</label>`).join('')||'<div style="color:var(--muted2);padding:8px">Chưa có nhân sự</div>';
+  $('#collabPanel').style.display='none';
+  $('#collabControl').style.opacity=disabled?'.6':'1';
+  $('#collabControl').style.cursor=disabled?'default':'pointer';
+  updateCollabSummary();
 }
+function updateCollabSummary(){
+  const names=[...$$('.collabChk')].filter(c=>c.checked).map(c=>member(c.value)?.full_name).filter(Boolean);
+  const el=$('#collabSummary');
+  if(names.length){el.textContent=names.join(', ');el.style.color='var(--txt)';}
+  else{el.textContent='— Chọn người phối hợp —';el.style.color='var(--muted)';}
+}
+window.updateCollabSummary=updateCollabSummary;
+window.toggleCollabPanel=()=>{if(collabDisabled)return;const p=$('#collabPanel');p.style.display=(p.style.display==='none'||!p.style.display)?'block':'none';};
+document.addEventListener('click',e=>{const d=$('#collabDropdown');if(d&&!d.contains(e.target))$('#collabPanel').style.display='none';});
 function closeTask(){$('#taskModal').classList.remove('show');if(cmtChannel){sb.removeChannel(cmtChannel);cmtChannel=null;}}
 
 async function saveTask(){
