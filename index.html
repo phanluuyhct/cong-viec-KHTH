@@ -1014,7 +1014,9 @@ function reportOf(pid,ym){return reports.find(r=>r.profile_id===pid&&r.ym===ym);
 function monthSummary(pid,ym){
   // Tính cả việc chịu trách nhiệm chính LẪN việc phối hợp
   const mine=tasks.filter(t=>t.assignee_id===pid||collabIdsOf(t.id).includes(pid));
-  const doneThis=mine.filter(t=>t.status==='done'&&(''+(t.completed_at||'')).slice(0,7)===ym);
+  // Tháng hoàn thành: ưu tiên mốc completed_at; nếu thiếu thì lấy theo hạn chót (việc cũ chưa có mốc)
+  const doneMonth=t=>((t.completed_at&&(''+t.completed_at).slice(0,7))||(t.due_date&&(''+t.due_date).slice(0,7))||'');
+  const doneThis=mine.filter(t=>t.status==='done'&&doneMonth(t)===ym);
   const open=mine.filter(t=>['todo','doing','review'].includes(t.status));
   const overdue=mine.filter(isOverdue);
   return {doneThis,open,overdue,total:mine.filter(t=>t.status!=='huy').length};
@@ -1189,18 +1191,27 @@ function renderGantt(){
   const span=max-min;
   rows0.sort((a,b)=>a.s-b.s);
   const iso=ms=>new Date(ms).toISOString().slice(0,10);
+  const LABELW=190, GAP=8;
+  const pctOf=ms=>Math.max(0,Math.min(100,(ms-min)/span*100));
+  // Trục thời gian: các mốc đầu tháng trong khoảng min→max
+  const months=[]; let md=new Date(min); md=new Date(md.getFullYear(),md.getMonth(),1);
+  while(md.getTime()<=max){months.push(new Date(md));md=new Date(md.getFullYear(),md.getMonth()+1,1);}
+  const axisLabels=months.map((m,i)=>{const l=pctOf(m.getTime());const yr=(m.getMonth()===0||i===0)?('/'+m.getFullYear()):'';return `<span style="position:absolute;left:${l}%;font-size:10.5px;color:var(--muted);white-space:nowrap;border-left:1px solid var(--line2);padding-left:3px;top:0">Th${m.getMonth()+1}${yr}</span>`;}).join('');
+  const gridLines=months.map(m=>`<div style="position:absolute;left:${pctOf(m.getTime())}%;top:0;bottom:0;width:1px;background:var(--line2)"></div>`).join('');
+  const header=`<div style="display:flex;gap:${GAP}px;margin-bottom:6px"><div style="width:${LABELW}px;flex:0 0 ${LABELW}px"></div><div style="flex:1;position:relative;height:16px;min-width:200px">${axisLabels}</div></div>`;
   const body=rows0.map(({t,s,e})=>{
-    const left=(s.getTime()-min)/span*100, width=Math.max(1.5,(e.getTime()-s.getTime())/span*100);
+    const left=pctOf(s.getTime()), width=Math.max(1.2,(e.getTime()-s.getTime())/span*100);
     const col=STATUS[t.status].color, od=isOverdue(t);
     const rng=fmtDate(iso(s.getTime()))+' → '+fmtDate(iso(e.getTime()));
-    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)">
-      <div style="width:190px;flex:0 0 190px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openTask(${t.id})" title="${esc(t.title)}">${esc(t.title)}</div>
-      <div style="flex:1;position:relative;height:22px;background:var(--bg2);border-radius:5px;min-width:200px">
-        <div onclick="openTask(${t.id})" title="${esc(t.title)} · ${rng}" style="position:absolute;left:${left}%;width:${width}%;top:3px;height:16px;background:${col};border-radius:4px;cursor:pointer;${od?'box-shadow:0 0 0 2px var(--red)':''}"></div>
+    return `<div style="display:flex;align-items:center;gap:${GAP}px;padding:4px 0;border-bottom:1px solid var(--line)">
+      <div style="width:${LABELW}px;flex:0 0 ${LABELW}px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openTask(${t.id})" title="${esc(t.title)}">${esc(t.title)}</div>
+      <div style="flex:1;position:relative;height:22px;background:var(--bg2);border-radius:5px;min-width:200px;overflow:hidden">
+        ${gridLines}
+        <div onclick="openTask(${t.id})" title="${esc(t.title)} · ${rng}" style="position:absolute;left:${left}%;width:${width}%;top:3px;height:16px;background:${col};border-radius:4px;cursor:pointer;z-index:1;${od?'box-shadow:0 0 0 2px var(--red)':''}"></div>
       </div></div>`;
   }).join('');
-  $('#ganttView').innerHTML=`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin:0 0 8px 198px"><span>${fmtDate(iso(min))}</span><span>${fmtDate(iso(max))}</span></div>`+body
-    +`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)">${['todo','doing','review','done','hoan','huy'].map(s=>`<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:${STATUS[s].color};display:inline-block"></i>${STATUS[s].label}</span>`).join('')}</div>`;
+  const legend=`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)">${['todo','doing','review','done','hoan','huy'].map(s=>`<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:${STATUS[s].color};display:inline-block"></i>${STATUS[s].label}</span>`).join('')}</div>`;
+  $('#ganttView').innerHTML=header+body+legend;
 }
 $('#ganttProject')&&($('#ganttProject').onchange=renderGantt);
 let calDate=new Date();
