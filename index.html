@@ -349,6 +349,8 @@
       <section class="view" id="view-kpi">
         <div class="grid stat-row" id="kpiStats"></div>
         <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:16px" id="kpiCharts"></div>
+        <div class="section-title">⚖️ Cân đối khối lượng (việc chưa hoàn thành)</div>
+        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Chưa xong</th><th>Đang làm</th><th>Quá hạn</th><th>Đánh giá</th></tr></thead><tbody id="kpiWorkloadBody"></tbody></table></div>
         <div class="section-title">🏆 KPI cá nhân</div>
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Thành viên</th><th>Tổng NV</th><th>Hoàn thành</th><th>Đúng hạn</th><th>Trễ hạn</th><th>Tỉ lệ</th><th>Điểm KPI</th></tr></thead><tbody id="kpiBody"></tbody></table></div>
         <div class="section-title">🏥 KPI theo tổ</div>
@@ -890,6 +892,34 @@ function renderKPI(){
     <td style="color:${r.overdue?'var(--red)':'var(--muted)'}">${r.overdue}</td>
     <td>${r.rate}%</td>
     <td><b style="color:${kScoreColor(r.score)}">${r.total?r.score:'—'}</b></td></tr>`).join('')||'<tr><td colspan="7" class="empty">Chưa có nhân sự</td></tr>';
+
+  // ⚖️ Cân đối khối lượng: đếm việc CHƯA XONG (cần làm/đang làm/đang duyệt) theo người phụ trách chính
+  const ACTIVE=['todo','doing','review'];
+  const wlRows=members.map(m=>{
+    const mt=tasks.filter(t=>t.assignee_id===m.id);
+    const active=mt.filter(t=>ACTIVE.includes(t.status));
+    return {m,active:active.length,doing:mt.filter(t=>t.status==='doing').length,overdue:mt.filter(isOverdue).length};
+  });
+  const withWork=wlRows.filter(r=>r.active>0);
+  const wlAvg=withWork.length?(withWork.reduce((a,b)=>a+b.active,0)/withWork.length):0;
+  const wlHi=Math.max(5,Math.ceil(wlAvg*1.5)); // ngưỡng "nhiều việc / quá tải"
+  const wlLo=Math.max(1,Math.floor(wlAvg*0.5));
+  function wlBadge(r){
+    if(r.active===0)return '<span class="chip" style="background:#e6ebf3;color:#46566f">Rảnh</span>';
+    if(r.overdue>=3||r.active>=wlHi)return '<span class="chip pri-cao">🔴 Quá tải</span>';
+    if(r.active<=wlLo)return '<span class="chip c-green" style="background:#e2f6ec;color:#1a7a50">🟢 Ít việc</span>';
+    return '<span class="chip pri-trung">🟡 Vừa phải</span>';
+  }
+  const wlSorted=wlRows.slice().sort((a,b)=>b.active-a.active||b.overdue-a.overdue);
+  $('#kpiWorkloadBody').innerHTML=wlSorted.map(r=>{
+    const bar=wlAvg?Math.min(100,Math.round(r.active/Math.max(wlHi,wlAvg*2)*100)):0;
+    return `<tr onclick="drillMemberKpi('${r.m.id}')" style="cursor:pointer">
+      <td class="tc">${ava(r.m)} ${esc(r.m.full_name)}</td>
+      <td><div style="display:flex;align-items:center;gap:8px"><b>${r.active}</b><div style="flex:1;max-width:120px;background:var(--line);border-radius:5px;height:7px;overflow:hidden"><div style="width:${bar}%;height:100%;background:${r.active>=wlHi?'var(--red)':r.active<=wlLo?'#1a7a50':'#eda100'}"></div></div></div></td>
+      <td>${r.doing}</td>
+      <td style="color:${r.overdue?'var(--red)':'var(--muted)'}">${r.overdue}</td>
+      <td>${wlBadge(r)}</td></tr>`;
+  }).join('')||'<tr><td colspan="5" class="empty">Chưa có nhân sự</td></tr>';
 
   $('#kpiTeamBody').innerHTML=teams.map(tm=>{const tt=tasks.filter(x=>x.team_id===tm.id),td=tt.filter(x=>x.status==='done').length,pct=tt.length?Math.round(td/tt.length*100):0;
     return `<tr onclick="drillTeam(${tm.id})" style="cursor:pointer"><td class="tc">${esc(tm.name)}</td><td>${tt.length}</td><td>${td}</td>
