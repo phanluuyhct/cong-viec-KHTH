@@ -1611,7 +1611,7 @@ function renderStaffDetailBody(){
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-      ${stat('total','Tổng việc',cnt.length)}${stat('doing','Đang làm',doing,'#1c6fb8')}${stat('done','Hoàn thành',done,'var(--green)')}${stat('overdue','Quá hạn',overdue,overdue?'var(--red)':'var(--muted)')}${stat('collab','Phối hợp',collab.length,'#6f42c1')}${statPlain('Tỉ lệ HT',rate+'%')}
+      ${statPlain('Tỉ lệ HT',rate+'%')}${stat('total','Tổng việc',cnt.length)}${stat('done','Hoàn thành',done,'var(--green)')}${stat('doing','Đang làm',doing,'#1c6fb8')}${stat('overdue','Quá hạn',overdue,overdue?'var(--red)':'var(--muted)')}${stat('collab','Phối hợp',collab.length,'#6f42c1')}
     </div>
     <div style="font-size:11px;color:var(--muted2);margin-bottom:12px">💡 Bấm vào ô số để lọc danh sách theo nhóm; việc hoàn thành xếp xuống cuối.</div>
     ${listHtml}`;
