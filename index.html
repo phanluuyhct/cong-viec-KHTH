@@ -165,12 +165,13 @@
 
   /* Calendar */
   .cal-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:auto repeat(6,1fr);gap:6px;height:calc(100vh - 210px);min-height:480px}
   .cal-dow{text-align:center;font-size:12px;color:var(--muted);font-weight:700;padding:3px}
-  .cal-cell{background:var(--bg2);border:1px solid var(--line);border-radius:9px;min-height:90px;padding:6px;display:flex;flex-direction:column;gap:3px}
+  .cal-cell{background:var(--bg2);border:1px solid var(--line);border-radius:9px;min-height:0;padding:5px;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:pointer}
   .cal-cell.other{opacity:.4}.cal-cell.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
-  .cal-num{font-size:12px;font-weight:700;color:var(--muted)}
-  .cal-ev{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--card2);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:3px solid var(--accent)}
+  .cal-num{font-size:12px;font-weight:700;color:var(--muted);flex:0 0 auto}
+  .cal-more{font-size:10.5px;color:var(--accent);font-weight:600;flex:0 0 auto;cursor:pointer}
+  .cal-ev{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--card2);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:3px solid var(--accent);flex:0 0 auto}
   .cal-ev.od{background:var(--redbg);border-left-color:var(--red);color:#ff90a5}.cal-ev.dn{background:var(--greenbg);border-left-color:var(--green);color:#6ee7b0}.cal-ev.sn{background:var(--amberbg);border-left-color:var(--amber);color:#ffce7a}
 
   .section-title{font-size:15px;font-weight:700;margin:20px 0 11px;display:flex;align-items:center;gap:8px}
@@ -369,7 +370,8 @@
       <section class="view" id="view-gantt">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
           <div class="legend" style="margin:0"><span>Sơ đồ Gantt theo thời gian (ngày bắt đầu → hạn chót). Bấm thanh để mở nhiệm vụ.</span></div>
-          <select class="sel" id="ganttProject" style="margin-left:auto"><option value="">Tất cả nhiệm vụ</option></select>
+          <select class="sel" id="ganttStatus" style="margin-left:auto"><option value="">Tất cả tình trạng</option><option value="todo">Cần làm</option><option value="doing">Đang làm</option><option value="review">Đang duyệt</option><option value="done">Hoàn thành</option><option value="hoan">Hoãn</option><option value="huy">Hủy</option></select>
+          <select class="sel" id="ganttProject"><option value="">Tất cả nhiệm vụ</option></select>
         </div>
         <div class="card" style="overflow:auto" id="ganttView"></div>
       </section>
@@ -522,6 +524,14 @@
   </div>
 </div>
 
+<!-- DAY EVENTS MODAL -->
+<div class="overlay" id="dayModal">
+  <div class="modal sm">
+    <div class="modal-h"><div><h3 id="dayTitle" style="margin:0">Ngày</h3><div id="daySub" style="font-size:12px;color:var(--muted);margin-top:2px"></div></div><button class="x" id="dayClose">✕</button></div>
+    <div class="modal-b" id="dayBody"></div>
+  </div>
+</div>
+
 <!-- CHANGE PASSWORD MODAL -->
 <div class="overlay" id="passModal">
   <div class="modal sm">
@@ -629,7 +639,8 @@ function teamIdsOf(pid){return memberTeams.filter(x=>x.profile_id===pid).map(x=>
 function leadIdsOf(pid){return memberTeams.filter(x=>x.profile_id===pid&&x.is_lead).map(x=>x.team_id);}
 function roleLabel(m){if(m.role==='admin')return ROLE.admin;if(m.role==='truong_phong')return ROLE.truong_phong;if(m.role==='pho_truong_phong')return ROLE.pho_truong_phong;if(m.role==='tro_ly')return ROLE.tro_ly;if(leadIdsOf(m.id).length)return ROLE.to_truong;return ROLE.nhan_vien;}
 function teamsChips(pid){const ids=teamIdsOf(pid);if(!ids.length)return '<span style="color:var(--muted2)">Chưa phân tổ</span>';return ids.map(id=>{const lead=leadIdsOf(pid).includes(id);return `<span class="chip team">${lead?'★ ':''}${esc((team(id)?.name||'').replace('Tổ ',''))}</span>`;}).join(' ');}
-function todayStr(){return new Date().toISOString().slice(0,10);}
+function localYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function todayStr(){return localYmd(new Date());}
 function daysLeft(d){if(!d)return null;return Math.round((new Date(d)-new Date(todayStr()))/86400000);}
 const CLOSED=['done','huy','hoan']; // không tính quá hạn cho việc đã xong/hủy/hoãn
 function isOverdue(t){return !CLOSED.includes(t.status)&&t.due_date&&daysLeft(t.due_date)<0;}
@@ -1242,14 +1253,16 @@ function renderGantt(){
   const gp=$('#ganttProject'), cur=gp.value;
   gp.innerHTML='<option value="">Tất cả nhiệm vụ</option><option value="__proj__">📁 Các dự án (theo thời gian)</option>'+projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
   gp.value=cur;
-  const pid=gp.value, isProj=(pid==='__proj__');
+  const pid=gp.value, isProj=(pid==='__proj__'), gstatus=$('#ganttStatus').value;
+  $('#ganttStatus').style.display=isProj?'none':'';
   let rows0;
   if(isProj){
     rows0=projects.map(p=>{const {s,e}=projRange(p);if(!s&&!e)return null;return {label:p.name,s:new Date(s),e:new Date(e),color:p.color||'#3b82f6',click:`openProject(${p.id})`,od:false};}).filter(Boolean);
     if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Chưa có dự án nào có ngày để vẽ Gantt.<br>Mở một dự án và điền <b>Ngày bắt đầu</b> / <b>Ngày kết thúc</b> (hoặc thêm nhiệm vụ có ngày để tự suy ra).</div>';return;}
   }else{
-    rows0=tasks.filter(t=>(!pid||String(t.project_id)===pid)).map(t=>{const s=t.start_date||t.due_date,e=t.due_date||t.start_date;if(!s&&!e)return null;return {label:t.title,s:new Date(s),e:new Date(e),color:STATUS[t.status].color,click:`openTask(${t.id})`,od:isOverdue(t)};}).filter(Boolean);
-    if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Chưa có nhiệm vụ nào có ngày bắt đầu / hạn chót để vẽ Gantt.<br>Hãy mở nhiệm vụ và điền <b>Ngày bắt đầu</b> và <b>Hạn chót</b>.</div>';return;}
+    // Áp dụng bộ lọc chung (tổ / người / dự án / tìm kiếm) + lọc theo dự án của Gantt + lọc theo tình trạng
+    rows0=filtered().filter(t=>(!pid||String(t.project_id)===pid)&&(!gstatus||t.status===gstatus)).map(t=>{const s=t.start_date||t.due_date,e=t.due_date||t.start_date;if(!s&&!e)return null;return {label:t.title,s:new Date(s),e:new Date(e),color:STATUS[t.status].color,click:`openTask(${t.id})`,od:isOverdue(t)};}).filter(Boolean);
+    if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Không có nhiệm vụ nào khớp bộ lọc (và có ngày bắt đầu / hạn chót) để vẽ Gantt.<br>Thử bỏ bớt bộ lọc, hoặc mở nhiệm vụ và điền <b>Ngày bắt đầu</b> / <b>Hạn chót</b>.</div>';return;}
   }
   let min=Math.min(...rows0.map(x=>x.s.getTime())), max=Math.max(...rows0.map(x=>x.e.getTime()));
   if(max<=min)max=min+86400000;
@@ -1277,6 +1290,9 @@ function renderGantt(){
   $('#ganttView').innerHTML=header+body+legend;
 }
 $('#ganttProject')&&($('#ganttProject').onchange=renderGantt);
+$('#ganttStatus')&&($('#ganttStatus').onchange=renderGantt);
+$('#dayClose').onclick=()=>$('#dayModal').classList.remove('show');
+$('#dayModal').onclick=e=>{if(e.target.id==='dayModal')$('#dayModal').classList.remove('show');};
 let calDate=new Date();
 function renderCalendar(){
   const y=calDate.getFullYear(),mo=calDate.getMonth();
@@ -1284,13 +1300,26 @@ function renderCalendar(){
   const first=new Date(y,mo,1),start=new Date(first);start.setDate(1-((first.getDay()+6)%7));
   let html=['T2','T3','T4','T5','T6','T7','CN'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
   const list=filtered();
-  for(let i=0;i<42;i++){const cur=new Date(start);cur.setDate(start.getDate()+i);const ds=cur.toISOString().slice(0,10);
+  for(let i=0;i<42;i++){const cur=new Date(start);cur.setDate(start.getDate()+i);const ds=localYmd(cur);
     const evs=list.filter(t=>t.due_date===ds);
-    html+=`<div class="cal-cell ${cur.getMonth()!==mo?'other':''} ${ds===todayStr()?'today':''}"><div class="cal-num">${cur.getDate()}</div>
-      ${evs.slice(0,4).map(t=>{const c=t.status==='done'?'dn':isOverdue(t)?'od':isSoon(t)?'sn':'';return `<div class="cal-ev ${c}" onclick="openTask(${t.id})" title="${esc(t.title)}">${esc(t.title)}</div>`;}).join('')}
-      ${evs.length>4?`<div style="font-size:11px;color:var(--muted2)">+${evs.length-4}</div>`:''}</div>`;}
+    const SHOW=2;
+    html+=`<div class="cal-cell ${cur.getMonth()!==mo?'other':''} ${ds===todayStr()?'today':''}" onclick="openDay('${ds}')"><div class="cal-num">${cur.getDate()}</div>
+      ${evs.slice(0,SHOW).map(t=>{const c=t.status==='done'?'dn':isOverdue(t)?'od':isSoon(t)?'sn':'';return `<div class="cal-ev ${c}" onclick="event.stopPropagation();openTask(${t.id})" title="${esc(t.title)}">${esc(t.title)}</div>`;}).join('')}
+      ${evs.length>SHOW?`<div class="cal-more" onclick="event.stopPropagation();openDay('${ds}')">+${evs.length-SHOW} việc khác…</div>`:''}</div>`;}
   $('#calGrid').innerHTML=html;
 }
+function openDay(ds){
+  const evs=filtered().filter(t=>t.due_date===ds);
+  const [y,m,d]=ds.split('-');
+  $('#dayTitle').textContent=`Ngày ${d}/${m}/${y}`;
+  $('#daySub').textContent=evs.length?`${evs.length} nhiệm vụ đến hạn`:'Không có nhiệm vụ đến hạn';
+  $('#dayBody').innerHTML=evs.map(t=>{const c=t.status==='done'?'dn':isOverdue(t)?'od':isSoon(t)?'sn':'';const st=STATUS[t.status];
+    return `<div class="cal-ev ${c}" style="white-space:normal;padding:9px 11px;font-size:13px;margin-bottom:7px" onclick="$('#dayModal').classList.remove('show');openTask(${t.id})" title="Mở nhiệm vụ">
+      <b>${esc(t.title)}</b><div style="font-size:11.5px;color:var(--muted);margin-top:3px">${st.label}${t.assignee_id?' · '+esc(member(t.assignee_id)?.full_name||''):''}</div></div>`;
+  }).join('')||'<div class="empty" style="padding:16px">Không có nhiệm vụ nào đến hạn trong ngày này.</div>';
+  $('#dayModal').classList.add('show');
+}
+window.openDay=openDay;
 function fmtBirth(b){if(!b)return '—';const s=''+b;return s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4);}
 function renderStaff(){
   const canEditStaff=canManageStaff();
@@ -1920,7 +1949,7 @@ $('#btnBell').onclick=e=>{e.stopPropagation();const p=$('#notifPanel');p.classLi
 $('#notifReadAll').onclick=markAllRead;
 document.addEventListener('click',e=>{if(!e.target.closest('.notifwrap'))$('#notifPanel').classList.remove('show');});
 $('#btnNew').onclick=()=>openTask(null);
-$('#search').oninput=()=>{renderKanban();renderTasks();renderTeams();renderCalendar();};
+$('#search').oninput=()=>{renderKanban();renderTasks();renderTeams();renderCalendar();renderGantt();};
 $('#filterTeam').onchange=$('#filterMember').onchange=$('#filterProject').onchange=renderAll;
 $('#btnNewProject').onclick=()=>openProject(null);
 $('#pmClose').onclick=$('#pmCancel').onclick=()=>$('#projModal').classList.remove('show');
@@ -1937,7 +1966,7 @@ $('#calPrev').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCalendar
 $('#calNext').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCalendar();};
 $('#calToday').onclick=()=>{calDate=new Date();renderCalendar();};
 $('#subInput')&&($('#subInput').onkeydown=e=>{if(e.key==='Enter')$('#subAdd').click();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');$('#teamModal').classList.remove('show');$('#profileModal').classList.remove('show');$('#staffDetailModal').classList.remove('show');$('#reviewModal').classList.remove('show');}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');$('#teamModal').classList.remove('show');$('#profileModal').classList.remove('show');$('#staffDetailModal').classList.remove('show');$('#reviewModal').classList.remove('show');$('#dayModal').classList.remove('show');}});
 
 /* ================= Start ================= */
 async function start(){
