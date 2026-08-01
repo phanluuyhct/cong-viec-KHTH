@@ -1092,15 +1092,21 @@ function renderTasks(){
       <td><div class="mini-bar"><i style="width:${t.progress}%;background:${dn?'var(--green)':'var(--accent)'}"></i></div> ${t.progress}%</td>
       <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty">Không có nhiệm vụ</td></tr>';
 }
+// Thứ tự ưu tiên khi sắp xếp trong tổ: việc đang làm lên trên, việc đã xong/hoãn/hủy xuống dưới
+function taskRank(t){return t.status==='done'?2:t.status==='hoan'?3:t.status==='huy'?4:0;}
 function teamBlock(tm){
-  const tt=filtered().filter(x=>x.team_id===tm.id);
+  const tt=filtered().filter(x=>x.team_id===tm.id)
+    .sort((a,b)=>taskRank(a)-taskRank(b)||new Date(a.due_date||'2999')-new Date(b.due_date||'2999'));
   const leadIds=memberTeams.filter(x=>x.team_id===tm.id&&x.is_lead).map(x=>x.profile_id);
   const lead=members.find(m=>leadIds.includes(m.id));
   const cnt=memberTeams.filter(x=>x.team_id===tm.id).length;
+  const doneN=tt.filter(t=>t.status==='done').length;
   const edit=isManager()?`<button class="btn sm" onclick="event.stopPropagation();openTeam(${tm.id})" title="Sửa tổ">✏️</button>`:'';
+  // Hiện tối đa ~5 dòng, còn lại kéo thanh cuộn của mỗi tổ để xem
+  const scroll=tt.length>5?'max-height:216px;overflow-y:auto;':'overflow:auto;';
   return `<div class="section-title" style="justify-content:space-between"><span>🏥 ${esc(tm.name)} ${edit}</span>
-    <span style="font-weight:400;font-size:12px;color:var(--muted)">${lead?'Tổ trưởng: '+lead.full_name+' · ':''}${cnt} người · ${tt.length} việc</span></div>
-    <div class="card" style="padding:0;overflow:auto;margin-bottom:6px">${tt.length?`<table><tbody>${tt.map(t=>{const o=isOverdue(t),dn=t.status==='done';
+    <span style="font-weight:400;font-size:12px;color:var(--muted)">${lead?'Tổ trưởng: '+lead.full_name+' · ':''}${cnt} người · ${tt.length} việc${doneN?' · '+doneN+' xong':''}</span></div>
+    <div class="card" style="padding:0;${scroll}margin-bottom:6px">${tt.length?`<table><tbody>${tt.map(t=>{const o=isOverdue(t),dn=t.status==='done';
       return `<tr onclick="openTask(${t.id})" style="cursor:pointer" class="${o?'row-od':''} ${dn?'row-dn':''}"><td class="tc" style="width:40%">${esc(t.title)}</td><td>${esc(t.category||'')}</td><td>${member(t.assignee_id)?.full_name||'—'}</td><td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td><td>${t.due_date?fmtDate(t.due_date):'—'}</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty" style="padding:16px">Chưa có nhiệm vụ trong tổ này</div>'}</div>`;
 }
 function teamTaskRow(t){const o=isOverdue(t),dn=t.status==='done';
