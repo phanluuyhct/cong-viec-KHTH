@@ -936,7 +936,9 @@ function renderKPI(){
   if(unassigned)wl.push({label:'(Chưa giao)',count:unassigned,color:'#9aa7c2'});
   const now=new Date(),months=[];
   for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({key:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),label:'Th'+(d.getMonth()+1)});}
-  const dbm={};tasks.filter(t=>t.status==='done'&&t.completed_at).forEach(t=>{const k=(''+t.completed_at).slice(0,7);dbm[k]=(dbm[k]||0)+1;});
+  // Tháng hoàn thành: ưu tiên mốc completed_at; nếu thiếu (việc cũ) thì lấy theo hạn chót
+  const doneMonthKey=t=>((t.completed_at&&(''+t.completed_at).slice(0,7))||(t.due_date&&(''+t.due_date).slice(0,7))||'');
+  const dbm={};tasks.filter(t=>t.status==='done').forEach(t=>{const k=doneMonthKey(t);if(k)dbm[k]=(dbm[k]||0)+1;});
   const monthRows=months.map(mo=>({label:mo.label,count:dbm[mo.key]||0,color:'#1baf7a'}));
   $('#kpiCharts').innerHTML=hbarChart('👤 Khối lượng công việc theo người phụ trách',wl)+barChart('✅ Việc hoàn thành theo tháng',monthRows);
 
