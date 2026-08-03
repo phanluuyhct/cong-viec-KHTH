@@ -366,8 +366,8 @@
           <div class="section-title" style="margin:0">📐 KPI theo Hướng dẫn 20 (A·B·C)</div>
           <button class="btn hidden" id="btnKpiCatalog" style="margin-left:auto">⚙️ Danh mục điểm</button>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin:2px 0 6px">A = số lượng, B = chất lượng, C = tiến độ. KPI = (A+B+C)/3×100 (lãnh đạo +D/4). Nhóm: ≥70 tốt · 50–&lt;70 đạt · &lt;50 chưa đạt. Tính theo kỳ đã chọn ở trên.</div>
-        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Việc (điểm giao)</th><th>A</th><th>B</th><th>C</th><th>KPI</th><th>Xếp nhóm</th></tr></thead><tbody id="kpiHdBody"></tbody></table></div>
+        <div style="font-size:12px;color:var(--muted);margin:2px 0 6px">A = số lượng, B = chất lượng, C = tiến độ. KPI = (A+B+C)/3×100 (lãnh đạo +D/4). Nhóm: ≥70 tốt · 50–&lt;70 đạt · &lt;50 chưa đạt. Tính theo kỳ đã chọn ở trên. Việc nhiều người: người chính 70% điểm, nhóm phối hợp chia đều 30%.</div>
+        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Việc (điểm giao)</th><th>A</th><th>B</th><th>C</th><th>D</th><th>KPI</th><th>Xếp nhóm</th></tr></thead><tbody id="kpiHdBody"></tbody></table></div>
         <div class="section-title">⚖️ Cân đối khối lượng (việc chưa hoàn thành)</div>
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Chưa xong</th><th>Đang làm</th><th>Quá hạn</th><th>Đánh giá</th></tr></thead><tbody id="kpiWorkloadBody"></tbody></table></div>
         <div class="section-title">🏆 KPI cá nhân</div>
@@ -427,7 +427,7 @@
           <div id="collabPanel" style="display:none;position:absolute;z-index:20;left:0;right:0;top:46px;max-height:220px;overflow:auto;background:var(--card);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow);padding:6px"></div>
         </div>
       </div>
-      <div class="field"><label>Lãnh đạo phụ trách nhiệm vụ (đánh giá KPI)</label><select id="fLeader"></select></div>
+      <div class="field"><label>Lãnh đạo phụ trách và đánh giá KPI</label><select id="fLeader"></select></div>
       <div class="three">
         <div class="field"><label>Trạng thái</label><select id="fStatus"><option value="todo">Cần làm</option><option value="doing">Đang làm</option><option value="review">Đang duyệt</option><option value="done">Hoàn thành</option><option value="hoan">Hoãn</option><option value="huy">Hủy</option></select></div>
         <div class="field"><label>Ưu tiên</label><select id="fPriority"><option value="cao">Cao</option><option value="trung">Trung bình</option><option value="thap">Thấp</option></select></div>
@@ -1046,16 +1046,27 @@ function renderKPI(){
   renderKpiHD20(pool);
 }
 // ===== KPI theo Hướng dẫn 20 (A·B·C·D) =====
+// Chia điểm theo vai trò: người chính giữ MAIN_SHARE, phần còn lại chia đều cho nhóm phối hợp.
+const KPI_MAIN_SHARE=0.7;
 function kpiGroup(kpi){return kpi>=70?{l:'Tốt',c:'var(--green)'}:kpi>=50?{l:'Đạt',c:'var(--amber)'}:{l:'Chưa đạt',c:'var(--red)'};}
 function computeKpiHD20(pool){
-  const base=members.map(m=>{
-    const mt=pool.filter(t=>t.assignee_id===m.id&&t.kpi_points!=null&&t.status!=='huy');
-    const denom=mt.reduce((s,t)=>s+(t.kpi_points||0),0);
-    let dA=0,dB=0,dC=0,dN=0;
-    mt.forEach(t=>{if(t.status==='done'){const p=t.kpi_points||0;dN++;dA+=p;dB+=p*(QUAL[t.kpi_quality]?.p??1.0);dC+=p*(TIMEL[t.kpi_time]?.p??1.0);}});
-    const A=denom?dA/denom:0,B=denom?dB/denom:0,C=denom?dC/denom:0;
-    return {m,denom,dN,total:mt.length,A,B,C};
+  const acc={};members.forEach(m=>acc[m.id]={m,denom:0,dA:0,dB:0,dC:0,dN:0,total:0});
+  pool.forEach(t=>{
+    if(t.kpi_points==null||t.status==='huy')return;
+    const P=t.kpi_points||0;
+    const collabs=collabIdsOf(t.id).filter(id=>id!==t.assignee_id&&acc[id]);
+    const parts=[]; // [profileId, trọng số]
+    if(t.assignee_id&&acc[t.assignee_id]){
+      parts.push([t.assignee_id, collabs.length?KPI_MAIN_SHARE:1]);
+      if(collabs.length){const cw=(1-KPI_MAIN_SHARE)/collabs.length;collabs.forEach(id=>parts.push([id,cw]));}
+    }else if(collabs.length){ // không có người chính: chia đều cho nhóm phối hợp
+      const cw=1/collabs.length;collabs.forEach(id=>parts.push([id,cw]));
+    }
+    const done=t.status==='done', qf=QUAL[t.kpi_quality]?.p??1.0, tf=TIMEL[t.kpi_time]?.p??1.0;
+    parts.forEach(([id,w])=>{const a=acc[id];const sh=P*w;a.denom+=sh;a.total++;if(done){a.dN++;a.dA+=sh;a.dB+=sh*qf;a.dC+=sh*tf;}});
   });
+  const base=members.map(m=>{const a=acc[m.id];const A=a.denom?a.dA/a.denom:0,B=a.denom?a.dB/a.denom:0,C=a.denom?a.dC/a.denom:0;
+    return {m,denom:a.denom,dN:a.dN,total:a.total,A,B,C};});
   const leadTeamIds=id=>teams.filter(t=>t.leader_id===id).map(t=>t.id);
   return base.map(r=>{
     const tids=leadTeamIds(r.m.id);const isLeader=tids.length>0;let D=null,kpi;
@@ -1075,11 +1086,12 @@ function renderKpiHD20(pool){
     const g=kpiGroup(r.kpi);
     return `<tr onclick="drillMemberKpi('${r.m.id}')" style="cursor:pointer">
       <td class="tc">${ava(r.m)} ${esc(r.m.full_name)}${r.isLeader?' <span class="chip cat" style="font-size:10px">LĐ</span>':''}</td>
-      <td>${r.dN}/${r.total} (${r.denom}đ)</td>
-      <td>${pct(r.A)}</td><td>${pct(r.B)}</td><td>${pct(r.C)}${r.isLeader?` · D ${pct(r.D)}`:''}</td>
+      <td>${r.dN}/${r.total} (${Math.round(r.denom)}đ)</td>
+      <td>${pct(r.A)}</td><td>${pct(r.B)}</td><td>${pct(r.C)}</td>
+      <td>${r.isLeader?pct(r.D):'<span style="color:var(--muted2)">—</span>'}</td>
       <td><b style="color:${g.c}">${r.kpi}</b></td>
       <td><span class="chip" style="background:${g.c};color:#fff;font-size:11px">${g.l}</span></td></tr>`;
-  }).join('')||'<tr><td colspan="7" class="empty">Chưa có việc nào chấm điểm KPI trong kỳ này. Vào từng nhiệm vụ để chọn “Loại việc (điểm)”, chấm chất lượng &amp; tiến độ.</td></tr>';
+  }).join('')||'<tr><td colspan="8" class="empty">Chưa có việc nào chấm điểm KPI trong kỳ này. Vào từng nhiệm vụ để chọn “Loại việc (điểm)”, chấm chất lượng &amp; tiến độ.</td></tr>';
 }
 window.renderKpiHD20=renderKpiHD20;
 function drillMemberKpi(id){drillFilter=null;$('#filterMember').value=id;$('#filterTeam').value='';$('#filterProject').value='';renderAll();nav('tasks');}
