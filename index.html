@@ -362,6 +362,12 @@
         </div>
         <div class="grid stat-row" id="kpiStats"></div>
         <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:16px" id="kpiCharts"></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <div class="section-title" style="margin:0">📐 KPI theo Hướng dẫn 20 (A·B·C)</div>
+          <button class="btn hidden" id="btnKpiCatalog" style="margin-left:auto">⚙️ Danh mục điểm</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin:2px 0 6px">A = số lượng, B = chất lượng, C = tiến độ. KPI = (A+B+C)/3×100 (lãnh đạo +D/4). Nhóm: ≥70 tốt · 50–&lt;70 đạt · &lt;50 chưa đạt. Tính theo kỳ đã chọn ở trên.</div>
+        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Việc (điểm giao)</th><th>A</th><th>B</th><th>C</th><th>KPI</th><th>Xếp nhóm</th></tr></thead><tbody id="kpiHdBody"></tbody></table></div>
         <div class="section-title">⚖️ Cân đối khối lượng (việc chưa hoàn thành)</div>
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Chưa xong</th><th>Đang làm</th><th>Quá hạn</th><th>Đánh giá</th></tr></thead><tbody id="kpiWorkloadBody"></tbody></table></div>
         <div class="section-title">🏆 KPI cá nhân</div>
@@ -382,7 +388,8 @@
       <section class="view" id="view-gantt">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
           <div class="legend" style="margin:0"><span>Sơ đồ Gantt theo thời gian (ngày bắt đầu → hạn chót). Bấm thanh để mở nhiệm vụ.</span></div>
-          <select class="sel" id="ganttStatus" style="margin-left:auto"><option value="">Tất cả tình trạng</option><option value="todo">Cần làm</option><option value="doing">Đang làm</option><option value="review">Đang duyệt</option><option value="done">Hoàn thành</option><option value="hoan">Hoãn</option><option value="huy">Hủy</option></select>
+          <select class="sel" id="ganttRange" style="margin-left:auto"></select>
+          <select class="sel" id="ganttStatus"><option value="">Tất cả tình trạng</option><option value="todo">Cần làm</option><option value="doing">Đang làm</option><option value="review">Đang duyệt</option><option value="done">Hoàn thành</option><option value="hoan">Hoãn</option><option value="huy">Hủy</option></select>
           <select class="sel" id="ganttProject"><option value="">Tất cả nhiệm vụ</option></select>
         </div>
         <div class="card" style="overflow:auto" id="ganttView"></div>
@@ -428,6 +435,19 @@
       </div>
       <div class="field"><label>Hạn chót</label><input type="date" id="fDue"></div>
       <div class="field"><label>Tiến độ (%)</label><input type="number" id="fProgress" min="0" max="100" step="5" value="0"></div>
+
+      <div class="field" id="kpiFields" style="background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:10px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:6px">📐 KPI (Hướng dẫn 20)</label>
+        <div class="two">
+          <div class="field"><label style="font-weight:400;font-size:12px">Loại việc (điểm)</label><select id="fKpiCat" onchange="onKpiCatChange()"></select></div>
+          <div class="field"><label style="font-weight:400;font-size:12px">Điểm KPI (0–100)</label><input type="number" id="fKpiPoints" min="0" max="100" placeholder="0–100"></div>
+        </div>
+        <div class="two" id="fKpiEval">
+          <div class="field"><label style="font-weight:400;font-size:12px">Chất lượng (B)</label><select id="fKpiQuality"></select></div>
+          <div class="field"><label style="font-weight:400;font-size:12px">Tiến độ (C)</label><select id="fKpiTime"></select></div>
+        </div>
+        <p id="kpiEvalNote" style="color:var(--muted2);font-size:11px;margin:4px 0 0">Chất lượng &amp; tiến độ do Lãnh đạo/Tổ trưởng chấm khi việc hoàn thành.</p>
+      </div>
 
       <div class="tabs" id="detailTabs" style="display:none">
         <button class="tab active" data-tab="sub">📝 Ghi chú / Subtask</button>
@@ -548,6 +568,19 @@
   </div>
 </div>
 
+<!-- DANH MỤC ĐIỂM KPI (HD20) -->
+<div class="overlay" id="kpiCatModal">
+  <div class="modal">
+    <div class="modal-h"><h3>⚙️ Danh mục nhiệm vụ & điểm KPI</h3><button class="x" id="kcClose">✕</button></div>
+    <div class="modal-b">
+      <p style="color:var(--muted);font-size:12.5px">Gán điểm (0–100) cho từng loại công việc/sản phẩm theo Hướng dẫn 20. Nhóm độ phức tạp: 0–49 (Nhóm 1), 50–69 (Nhóm 2), 70–100 (Nhóm 3).</p>
+      <div class="card" style="padding:0;overflow:auto;margin-bottom:10px"><table><thead><tr><th>Loại công việc / sản phẩm</th><th>Điểm</th><th>Nhóm</th><th></th></tr></thead><tbody id="kcBody"></tbody></table></div>
+      <div class="addrow" style="flex-wrap:wrap;gap:8px"><input id="kcName" placeholder="VD: Công văn, Báo cáo, Tờ trình..." style="flex:1;min-width:160px"><input id="kcPoints" type="number" min="0" max="100" placeholder="Điểm" style="max-width:90px"><button class="btn primary" id="kcAdd">Thêm</button></div>
+    </div>
+    <div class="modal-f"><button class="btn ghost" id="kcCancel">Đóng</button></div>
+  </div>
+</div>
+
 <!-- CHANGE PASSWORD MODAL -->
 <div class="overlay" id="passModal">
   <div class="modal sm">
@@ -632,12 +665,15 @@ const EMBED_URL='https://ljkfxhdcmfngdtditeyy.supabase.co';
 const EMBED_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqa2Z4aGRjbWZuZ2R0ZGl0ZXl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODk3NzEsImV4cCI6MjEwMDc2NTc3MX0.Qbgy-VrVG5GIz_70w4AJMY9uCVEt8s2LTjmkrqTAEYU';
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 let sb=null, session=null, me=null;
-let teams=[], members=[], tasks=[], memberTeams=[], projects=[], taskCollabs=[], reports=[], projectTeams=[];
+let teams=[], members=[], tasks=[], memberTeams=[], projects=[], taskCollabs=[], reports=[], projectTeams=[], kpiCatalog=[];
 let editId=null, cmtChannel=null, taskChannel=null, editProjId=null;
 const AV=['#3b82f6','#31c48d','#f5a524','#a878ff','#33c9dc','#f2506e','#ff8c42','#4dd0a0','#9b6dff','#ff6b9d'];
 
 const STATUS={todo:{label:'Cần làm',color:'#7c8bb0',cls:'b-todo'},doing:{label:'Đang làm',color:'#3b82f6',cls:'b-doing'},review:{label:'Đang duyệt',color:'#a878ff',cls:'b-review'},done:{label:'Hoàn thành',color:'#31c48d',cls:'b-done'},hoan:{label:'Hoãn',color:'#eda100',cls:'b-hoan'},huy:{label:'Hủy',color:'#8a94a6',cls:'b-huy'}};
 const PRI={cao:{label:'Cao',cls:'pri-cao'},trung:{label:'Trung bình',cls:'pri-trung'},thap:{label:'Thấp',cls:'pri-thap'}};
+// KPI theo Hướng dẫn 20: mức chất lượng (B) & tiến độ (C) kèm hệ số điểm
+const QUAL={exceed:{l:'Vượt mức (120%)',p:1.2},ok:{l:'Đảm bảo (100%)',p:1.0},r1:{l:'Sửa 1 lần (75%)',p:0.75},r24:{l:'Sửa 2–4 lần (50%)',p:0.5},r56:{l:'Sửa 5–6 lần (25%)',p:0.25},r7:{l:'Sửa ≥7 lần (0%)',p:0}};
+const TIMEL={early:{l:'Vượt tiến độ (120%)',p:1.2},ontime:{l:'Đúng hạn (100%)',p:1.0},late1:{l:'Nhắc 1 lần (75%)',p:0.75},late2:{l:'Nhắc 2 lần (50%)',p:0.5},late3:{l:'Nhắc 3 lần (25%)',p:0.25},late4:{l:'Nhắc ≥4 lần (0%)',p:0}};
 const ROLE={admin:{label:'Quản trị hệ thống',cls:'rb-admin'},truong_phong:{label:'Trưởng phòng',cls:'rb-tp'},pho_truong_phong:{label:'Phó trưởng phòng',cls:'rb-pho'},tro_ly:{label:'Trợ lý LĐ phòng',cls:'rb-tro'},to_truong:{label:'Tổ trưởng',cls:'rb-tt'},nhan_vien:{label:'Nhân viên',cls:'rb-nv'}};
 
 /* ================= Helpers ================= */
@@ -803,7 +839,7 @@ async function loadMe(){
   loadNotifs();subscribeNotifs();requestNotifPerm();
 }
 async function loadData(){
-  const [tRes,mRes,kRes,mtRes,pRes,tcRes,rRes,ptRes]=await Promise.all([
+  const [tRes,mRes,kRes,mtRes,pRes,tcRes,rRes,ptRes,kcRes]=await Promise.all([
     sb.from('teams').select('*').order('sort_order'),
     sb.from('profiles').select('*').order('full_name'),
     sb.from('tasks').select('*').order('due_date',{nullsFirst:false}),
@@ -811,9 +847,10 @@ async function loadData(){
     sb.from('projects').select('*').order('created_at'),
     sb.from('task_collaborators').select('*'),
     sb.from('monthly_reports').select('*'),
-    sb.from('project_teams').select('*')
+    sb.from('project_teams').select('*'),
+    sb.from('kpi_catalog').select('*').order('sort_order')
   ]);
-  teams=tRes.data||[];members=mRes.data||[];tasks=kRes.data||[];memberTeams=mtRes.data||[];projects=pRes.data||[];taskCollabs=tcRes.data||[];reports=rRes.data||[];projectTeams=ptRes.data||[];
+  teams=tRes.data||[];members=mRes.data||[];tasks=kRes.data||[];memberTeams=mtRes.data||[];projects=pRes.data||[];taskCollabs=tcRes.data||[];reports=rRes.data||[];projectTeams=ptRes.data||[];kpiCatalog=kcRes.data||[];
   if(me){me.teamIds=teamIdsOf(me.id);me.leadIds=leadIdsOf(me.id);}
 }
 function projTeamIds(pid){return projectTeams.filter(x=>x.project_id===pid).map(x=>x.team_id);}
@@ -1003,7 +1040,48 @@ function renderKPI(){
   $('#kpiLeaderBody').innerHTML=leadRows.map(r=>`<tr><td class="tc">${ava(r.ld)} ${esc(r.ld.full_name)}</td><td>${r.nteam}</td><td>${r.total}</td><td>${r.done}</td>
     <td style="color:${r.overdue?'var(--red)':'var(--muted)'}">${r.overdue}</td><td>${r.rate}%</td>
     <td><b style="color:${kScoreColor(r.score)}">${r.total?r.score:'—'}</b></td></tr>`).join('')||'<tr><td colspan="7" class="empty">Chưa phân công lãnh đạo phụ trách tổ nào</td></tr>';
+
+  // KPI theo Hướng dẫn 20 (dùng đúng kỳ đã lọc ở trên)
+  $('#btnKpiCatalog').classList.toggle('hidden',!canManageTask());
+  renderKpiHD20(pool);
 }
+// ===== KPI theo Hướng dẫn 20 (A·B·C·D) =====
+function kpiGroup(kpi){return kpi>=70?{l:'Tốt',c:'var(--green)'}:kpi>=50?{l:'Đạt',c:'var(--amber)'}:{l:'Chưa đạt',c:'var(--red)'};}
+function computeKpiHD20(pool){
+  const base=members.map(m=>{
+    const mt=pool.filter(t=>t.assignee_id===m.id&&t.kpi_points!=null&&t.status!=='huy');
+    const denom=mt.reduce((s,t)=>s+(t.kpi_points||0),0);
+    let dA=0,dB=0,dC=0,dN=0;
+    mt.forEach(t=>{if(t.status==='done'){const p=t.kpi_points||0;dN++;dA+=p;dB+=p*(QUAL[t.kpi_quality]?.p??1.0);dC+=p*(TIMEL[t.kpi_time]?.p??1.0);}});
+    const A=denom?dA/denom:0,B=denom?dB/denom:0,C=denom?dC/denom:0;
+    return {m,denom,dN,total:mt.length,A,B,C};
+  });
+  const leadTeamIds=id=>teams.filter(t=>t.leader_id===id).map(t=>t.id);
+  return base.map(r=>{
+    const tids=leadTeamIds(r.m.id);const isLeader=tids.length>0;let D=null,kpi;
+    if(isLeader){
+      const memIds=new Set();memberTeams.filter(x=>tids.includes(x.team_id)).forEach(x=>memIds.add(x.profile_id));
+      const sub=base.filter(x=>memIds.has(x.m.id)&&x.denom>0);
+      D=sub.length?sub.reduce((s,x)=>s+(x.A+x.B+x.C)/3,0)/sub.length:0;
+      kpi=(r.A+r.B+r.C+D)/4*100;
+    }else{kpi=(r.A+r.B+r.C)/3*100;}
+    return {...r,isLeader,D,kpi:Math.round(kpi)};
+  });
+}
+function renderKpiHD20(pool){
+  const rows=computeKpiHD20(pool).filter(r=>r.total>0).sort((a,b)=>b.kpi-a.kpi);
+  const pct=x=>Math.round(x*100)+'%';
+  $('#kpiHdBody').innerHTML=rows.map(r=>{
+    const g=kpiGroup(r.kpi);
+    return `<tr onclick="drillMemberKpi('${r.m.id}')" style="cursor:pointer">
+      <td class="tc">${ava(r.m)} ${esc(r.m.full_name)}${r.isLeader?' <span class="chip cat" style="font-size:10px">LĐ</span>':''}</td>
+      <td>${r.dN}/${r.total} (${r.denom}đ)</td>
+      <td>${pct(r.A)}</td><td>${pct(r.B)}</td><td>${pct(r.C)}${r.isLeader?` · D ${pct(r.D)}`:''}</td>
+      <td><b style="color:${g.c}">${r.kpi}</b></td>
+      <td><span class="chip" style="background:${g.c};color:#fff;font-size:11px">${g.l}</span></td></tr>`;
+  }).join('')||'<tr><td colspan="7" class="empty">Chưa có việc nào chấm điểm KPI trong kỳ này. Vào từng nhiệm vụ để chọn “Loại việc (điểm)”, chấm chất lượng &amp; tiến độ.</td></tr>';
+}
+window.renderKpiHD20=renderKpiHD20;
 function drillMemberKpi(id){drillFilter=null;$('#filterMember').value=id;$('#filterTeam').value='';$('#filterProject').value='';renderAll();nav('tasks');}
 window.drillMemberKpi=drillMemberKpi;
 function renderDashboard(){
@@ -1353,22 +1431,44 @@ function projRange(p){
   }
   return {s:s||e, e:e||s};
 }
+function ganttPeriod(val){
+  if(!val||val==='all')return null;
+  const d=new Date(), y=d.getFullYear(), m=d.getMonth();
+  const mk=(a,b,c)=>new Date(a,b,c).getTime();
+  if(val==='year')return {s:mk(y,0,1),e:mk(y,11,31)};
+  if(val==='quarter'){const q=Math.floor(m/3);return {s:mk(y,q*3,1),e:mk(y,q*3+3,0)};}
+  if(val==='month')return {s:mk(y,m,1),e:mk(y,m+1,0)};
+  if(/^\d{4}-\d{2}$/.test(val)){const[yy,mm]=val.split('-').map(Number);return {s:mk(yy,mm-1,1),e:mk(yy,mm,0)};}
+  return null;
+}
 function renderGantt(){
+  // Bộ chọn kỳ thời gian (giữ lựa chọn hiện tại)
+  const rgs=$('#ganttRange');
+  if(rgs&&!rgs.options.length){
+    rgs.innerHTML='<option value="year">Năm nay</option><option value="quarter">Quý này</option><option value="month">Tháng này</option><option value="all">Toàn bộ thời gian</option>'
+      +'<optgroup label="Tháng cụ thể">'+recentMonths(12).map(ym=>`<option value="${ym}">${ymLabel(ym)}</option>`).join('')+'</optgroup>';
+    rgs.value='year';
+  }
+  const period=ganttPeriod(rgs?rgs.value:'all');
   const gp=$('#ganttProject'), cur=gp.value;
   gp.innerHTML='<option value="">Tất cả nhiệm vụ</option><option value="__proj__">📁 Các dự án (theo thời gian)</option>'+projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
   gp.value=cur;
   const pid=gp.value, isProj=(pid==='__proj__'), gstatus=$('#ganttStatus').value;
   $('#ganttStatus').style.display=isProj?'none':'';
+  const inPeriod=r=>!period||(r.s.getTime()<=period.e&&r.e.getTime()>=period.s); // việc chồng lấn kỳ đã chọn
   let rows0;
   if(isProj){
-    rows0=projects.map(p=>{const {s,e}=projRange(p);if(!s&&!e)return null;return {label:p.name,s:new Date(s),e:new Date(e),color:p.color||'#3b82f6',click:`openProject(${p.id})`,od:false};}).filter(Boolean);
-    if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Chưa có dự án nào có ngày để vẽ Gantt.<br>Mở một dự án và điền <b>Ngày bắt đầu</b> / <b>Ngày kết thúc</b> (hoặc thêm nhiệm vụ có ngày để tự suy ra).</div>';return;}
+    rows0=projects.map(p=>{const {s,e}=projRange(p);if(!s&&!e)return null;return {label:p.name,s:new Date(s),e:new Date(e),color:p.color||'#3b82f6',click:`openProject(${p.id})`,od:false};}).filter(Boolean).filter(inPeriod);
+    if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Không có dự án nào trong kỳ đã chọn.<br>Thử đổi “kỳ thời gian” sang Toàn bộ, hoặc điền ngày cho dự án.</div>';return;}
   }else{
-    // Áp dụng bộ lọc chung (tổ / người / dự án / tìm kiếm) + lọc theo dự án của Gantt + lọc theo tình trạng
-    rows0=filtered().filter(t=>(!pid||String(t.project_id)===pid)&&(!gstatus||t.status===gstatus)).map(t=>{const s=t.start_date||t.due_date,e=t.due_date||t.start_date;if(!s&&!e)return null;return {label:t.title,s:new Date(s),e:new Date(e),color:STATUS[t.status].color,click:`openTask(${t.id})`,od:isOverdue(t)};}).filter(Boolean);
-    if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Không có nhiệm vụ nào khớp bộ lọc (và có ngày bắt đầu / hạn chót) để vẽ Gantt.<br>Thử bỏ bớt bộ lọc, hoặc mở nhiệm vụ và điền <b>Ngày bắt đầu</b> / <b>Hạn chót</b>.</div>';return;}
+    // Áp dụng bộ lọc chung (tổ / người / dự án / tìm kiếm) + lọc theo dự án của Gantt + lọc theo tình trạng + lọc theo kỳ
+    rows0=filtered().filter(t=>(!pid||String(t.project_id)===pid)&&(!gstatus||t.status===gstatus)).map(t=>{const s=t.start_date||t.due_date,e=t.due_date||t.start_date;if(!s&&!e)return null;return {label:t.title,s:new Date(s),e:new Date(e),color:STATUS[t.status].color,click:`openTask(${t.id})`,od:isOverdue(t)};}).filter(Boolean).filter(inPeriod);
+    if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Không có nhiệm vụ nào trong kỳ đã chọn (và khớp bộ lọc).<br>Thử đổi “kỳ thời gian” sang Toàn bộ, hoặc bỏ bớt bộ lọc.</div>';return;}
   }
-  let min=Math.min(...rows0.map(x=>x.s.getTime())), max=Math.max(...rows0.map(x=>x.e.getTime()));
+  // Trục thời gian: nếu chọn kỳ thì căn theo kỳ (tránh 1 việc dài kéo giãn cả biểu đồ); nếu Toàn bộ thì theo dữ liệu
+  let min, max;
+  if(period){min=period.s;max=period.e;}
+  else{min=Math.min(...rows0.map(x=>x.s.getTime()));max=Math.max(...rows0.map(x=>x.e.getTime()));}
   if(max<=min)max=min+86400000;
   const span=max-min;
   rows0.sort((a,b)=>a.s-b.s);
@@ -1395,6 +1495,7 @@ function renderGantt(){
 }
 $('#ganttProject')&&($('#ganttProject').onchange=renderGantt);
 $('#ganttStatus')&&($('#ganttStatus').onchange=renderGantt);
+$('#ganttRange')&&($('#ganttRange').onchange=renderGantt);
 $('#dayClose').onclick=()=>$('#dayModal').classList.remove('show');
 $('#dayModal').onclick=e=>{if(e.target.id==='dayModal')$('#dayModal').classList.remove('show');};
 let calDate=new Date();
@@ -1569,6 +1670,7 @@ async function openTask(id){
   // Nhân viên tự tạo việc VẪN chọn được "Người phối hợp" (họ là người phụ trách nên có quyền)
   renderCollabChecks(t?collabIdsOf(id):[], !editable);
   ['fTitle','fDesc','fTeam','fCat','fAssignee','fStatus','fPriority','fStart','fDue','fProgress'].forEach(f=>$('#'+f).disabled=!editable);
+  fillKpiFields(t,editable);
   if(lockAssignee){$('#fAssignee').value=me.id;$('#fAssignee').disabled=true;}
   $('#tmSave').style.display=editable?'inline-flex':'none';
   $('#tmDelete').style.display=(t&&canDelete(t))?'inline-flex':'none';
@@ -1577,6 +1679,25 @@ async function openTask(id){
   if(t){loadSubtasks(id);loadComments(id);loadAttachments(id);subscribeComments(id);}
 }
 window.openTask=openTask;
+// KPI theo HD20: chấm chất lượng/tiến độ do Lãnh đạo/Tổ trưởng (không phải người thực hiện tự chấm)
+function canEvalKpi(t){return me&&(canManageTask()||(t&&myLeadIds().includes(t.team_id)));}
+function fillKpiFields(t,editable){
+  const cat=$('#fKpiCat');
+  cat.innerHTML='<option value="">— Chọn loại việc —</option>'+kpiCatalog.filter(k=>k.active!==false).map(k=>`<option value="${k.id}" data-p="${k.points}">${esc(k.name)} (${k.points}đ)</option>`).join('');
+  const pts=t?.kpi_points;
+  const match=(pts!=null)?kpiCatalog.find(k=>k.points===pts):null;
+  cat.value=match?match.id:'';
+  $('#fKpiPoints').value=(pts!=null)?pts:'';
+  const qOpts='<option value="">—</option>'+Object.entries(QUAL).map(([v,o])=>`<option value="${v}">${o.l}</option>`).join('');
+  const tOpts='<option value="">—</option>'+Object.entries(TIMEL).map(([v,o])=>`<option value="${v}">${o.l}</option>`).join('');
+  $('#fKpiQuality').innerHTML=qOpts;$('#fKpiTime').innerHTML=tOpts;
+  $('#fKpiQuality').value=t?.kpi_quality||'';$('#fKpiTime').value=t?.kpi_time||'';
+  const canEval=canEvalKpi(t)&&editable;
+  $('#fKpiCat').disabled=!editable;$('#fKpiPoints').disabled=!editable;
+  $('#fKpiQuality').disabled=!canEval;$('#fKpiTime').disabled=!canEval;
+  $('#kpiEvalNote').style.display=canEval?'none':'block';
+}
+window.onKpiCatChange=()=>{const o=$('#fKpiCat').selectedOptions[0];const p=o&&o.dataset.p;if(p!=null&&p!=='')$('#fKpiPoints').value=p;};
 let collabDisabled=false;
 function renderCollabChecks(selected,disabled){
   const sel=new Set(selected);collabDisabled=disabled;
@@ -1601,8 +1722,10 @@ function closeTask(){$('#taskModal').classList.remove('show');if(cmtChannel){sb.
 async function saveTask(){
   const title=$('#fTitle').value.trim();if(!title){toast('Nhập tên nhiệm vụ','err');return;}
   let prog=parseInt($('#fProgress').value)||0;const st=$('#fStatus').value;if(st==='done')prog=100;
+  const kpiP=$('#fKpiPoints').value;
   const obj={title,description:$('#fDesc').value.trim(),team_id:+$('#fTeam').value||null,project_id:+$('#fProject').value||null,category:$('#fCat').value.trim(),
-    assignee_id:$('#fAssignee').value||null,status:st,priority:$('#fPriority').value,start_date:$('#fStart').value||null,due_date:$('#fDue').value||null,progress:prog};
+    assignee_id:$('#fAssignee').value||null,status:st,priority:$('#fPriority').value,start_date:$('#fStart').value||null,due_date:$('#fDue').value||null,progress:prog,
+    kpi_points:(kpiP===''?null:Math.max(0,Math.min(100,parseInt(kpiP)||0))),kpi_quality:$('#fKpiQuality').value||null,kpi_time:$('#fKpiTime').value||null};
   $('#tmSave').disabled=true;
   try{
     const wasNew=!editId;let taskId=editId;
@@ -1969,6 +2092,33 @@ $('#addUserModal').onclick=e=>{if(e.target.id==='addUserModal')$('#addUserModal'
 $('#auGen').onclick=genPass;$('#auSave').onclick=submitAddUser;
 
 /* ===== Đổi mật khẩu của tôi ===== */
+/* ===== Danh mục điểm KPI (HD20) ===== */
+function kcGroupLabel(p){return p>=70?'Nhóm 3 (70–100)':p>=50?'Nhóm 2 (50–69)':'Nhóm 1 (0–49)';}
+function renderKpiCatalog(){
+  const rows=kpiCatalog.slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||b.points-a.points);
+  $('#kcBody').innerHTML=rows.map(k=>`<tr>
+    <td><input value="${esc(k.name).replace(/"/g,'&quot;')}" onchange="kcRename(${k.id},this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:7px;padding:5px 7px;color:var(--txt);font-size:13px"></td>
+    <td><input type="number" min="0" max="100" value="${k.points}" onchange="kcRepoint(${k.id},this.value)" style="width:70px;background:var(--bg2);border:1px solid var(--line2);border-radius:7px;padding:5px 7px;color:var(--txt);font-size:13px"></td>
+    <td style="font-size:12px;color:var(--muted)">${kcGroupLabel(k.points)}</td>
+    <td><button class="btn sm danger" onclick="kcDelete(${k.id})">✕</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Chưa có loại việc nào. Thêm ở bên dưới.</td></tr>';
+}
+function openKpiCatalog(){if(!canManageTask()){toast('Chỉ Lãnh đạo/Trợ lý được sửa danh mục','err');return;}renderKpiCatalog();$('#kcName').value='';$('#kcPoints').value='';$('#kpiCatModal').classList.add('show');}
+window.openKpiCatalog=openKpiCatalog;
+async function reloadCatalog(){const {data}=await sb.from('kpi_catalog').select('*').order('sort_order');kpiCatalog=data||[];renderKpiCatalog();}
+window.kcRename=async(id,name)=>{name=(name||'').trim();if(!name){reloadCatalog();return;}const {error}=await sb.from('kpi_catalog').update({name}).eq('id',id);if(error)toast('Lỗi: '+error.message,'err');else{const k=kpiCatalog.find(k=>k.id===id);if(k)k.name=name;}};
+window.kcRepoint=async(id,p)=>{p=Math.max(0,Math.min(100,parseInt(p)||0));const {error}=await sb.from('kpi_catalog').update({points:p}).eq('id',id);if(error){toast('Lỗi: '+error.message,'err');reloadCatalog();return;}const k=kpiCatalog.find(k=>k.id===id);if(k)k.points=p;renderKpiCatalog();};
+window.kcDelete=async(id)=>{if(!confirm('Xóa loại việc này khỏi danh mục?'))return;const {error}=await sb.from('kpi_catalog').delete().eq('id',id);if(error){toast('Lỗi: '+error.message,'err');return;}kpiCatalog=kpiCatalog.filter(k=>k.id!==id);renderKpiCatalog();};
+$('#btnKpiCatalog').onclick=openKpiCatalog;
+$('#kcClose').onclick=$('#kcCancel').onclick=()=>$('#kpiCatModal').classList.remove('show');
+$('#kpiCatModal').onclick=e=>{if(e.target.id==='kpiCatModal')$('#kpiCatModal').classList.remove('show');};
+$('#kcAdd').onclick=async()=>{
+  const name=$('#kcName').value.trim();const p=Math.max(0,Math.min(100,parseInt($('#kcPoints').value)||0));
+  if(!name){toast('Nhập tên loại việc','err');return;}
+  const order=(kpiCatalog.reduce((m,k)=>Math.max(m,k.sort_order||0),0))+1;
+  const {data,error}=await sb.from('kpi_catalog').insert({name,points:p,sort_order:order}).select().single();
+  if(error){toast('Lỗi: '+error.message,'err');return;}
+  kpiCatalog.push(data);$('#kcName').value='';$('#kcPoints').value='';renderKpiCatalog();toast('Đã thêm','ok');
+};
 $('#btnChangePass').onclick=()=>{$('#pwNew').value='';$('#pwNew2').value='';$('#passModal').classList.add('show');};
 $('#pwClose').onclick=$('#pwCancel').onclick=()=>$('#passModal').classList.remove('show');
 $('#passModal').onclick=e=>{if(e.target.id==='passModal')$('#passModal').classList.remove('show');};
@@ -2089,7 +2239,7 @@ $('#calPrev').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCalendar
 $('#calNext').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCalendar();};
 $('#calToday').onclick=()=>{calDate=new Date();renderCalendar();};
 $('#subInput')&&($('#subInput').onkeydown=e=>{if(e.key==='Enter')$('#subAdd').click();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');$('#teamModal').classList.remove('show');$('#profileModal').classList.remove('show');$('#staffDetailModal').classList.remove('show');$('#reviewModal').classList.remove('show');$('#dayModal').classList.remove('show');}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');$('#teamModal').classList.remove('show');$('#profileModal').classList.remove('show');$('#staffDetailModal').classList.remove('show');$('#reviewModal').classList.remove('show');$('#dayModal').classList.remove('show');$('#kpiCatModal').classList.remove('show');}});
 
 /* ================= Start ================= */
 async function start(){
