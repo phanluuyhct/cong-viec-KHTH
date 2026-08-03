@@ -341,6 +341,14 @@
         <div class="card" style="padding:0;overflow:auto">
           <table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>Loại</th><th>Phụ trách</th><th>Người phối hợp</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody id="taskBody"></tbody></table>
         </div>
+        <div id="taskDoneWrap" style="margin-top:12px;display:none">
+          <div onclick="toggleTaskDone()" style="cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:700;color:var(--green);padding:6px 2px;user-select:none">
+            <span id="taskDoneCaret">▸</span><span id="taskDoneLabel">Việc đã hoàn thành</span>
+          </div>
+          <div id="taskDoneList" class="card" style="padding:0;overflow:auto;display:none;max-height:280px">
+            <table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>Loại</th><th>Phụ trách</th><th>Người phối hợp</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody id="taskDoneBody"></tbody></table>
+          </div>
+        </div>
       </section>
       <section class="view" id="view-teams"><div id="teamsView"></div></section>
       <section class="view" id="view-projects">
@@ -1084,16 +1092,35 @@ function renderTasks(){
   if(chips.length){fb.style.display='flex';fb.style.alignItems='center';fb.style.gap='10px';fb.style.flexWrap='wrap';
     fb.innerHTML=`<span style="color:var(--muted);font-size:13px">Đang lọc:</span>`+chips.map(c=>`<span class="chip" style="background:var(--bg2);color:var(--txt);font-weight:600">${esc(c)}</span>`).join('')+`<button class="btn sm" onclick="drillClear()">✕ Xóa lọc</button>`;
   }else{fb.style.display='none';fb.innerHTML='';}
-  const list=filtered().slice().sort((a,b)=>new Date(a.due_date||'2999')-new Date(b.due_date||'2999'));
-  $('#taskBody').innerHTML=list.map(t=>{const m=member(t.assignee_id),o=isOverdue(t),dn=t.status==='done',dl=daysLeft(t.due_date);
+  const all=filtered().slice();
+  // Việc chưa hoàn thành lên bảng chính (đang làm/cần làm trước); việc đã hoàn thành gom vào danh sách thu gọn bên dưới
+  const openList=all.filter(t=>t.status!=='done').sort((a,b)=>taskRank(a)-taskRank(b)||new Date(a.due_date||'2999')-new Date(b.due_date||'2999'));
+  const doneList=all.filter(t=>t.status==='done').sort((a,b)=>new Date(b.completed_at||b.due_date||'0')-new Date(a.completed_at||a.due_date||'0'));
+  const rowHtml=t=>{const m=member(t.assignee_id),o=isOverdue(t),dn=t.status==='done',dl=daysLeft(t.due_date);
     const collab=collabIdsOf(t.id).map(id=>member(id)?.full_name).filter(Boolean).join(', ');
     return `<tr class="${o?'row-od':''} ${dn?'row-dn':''}" onclick="openTask(${t.id})" style="cursor:pointer">
       <td class="tc">${esc(t.title)}</td><td>${esc(team(t.team_id)?.name||'')}</td><td>${esc(t.category||'')}</td>
       <td>${m?esc(m.full_name):'—'}</td><td>${collab?esc(collab):'—'}</td><td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td>
       <td><span class="chip ${PRI[t.priority].cls}">${PRI[t.priority].label}</span></td>
       <td><div class="mini-bar"><i style="width:${t.progress}%;background:${dn?'var(--green)':'var(--accent)'}"></i></div> ${t.progress}%</td>
-      <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;}).join('')||'<tr><td colspan="9" class="empty">Không có nhiệm vụ</td></tr>';
+      <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;};
+  $('#taskBody').innerHTML=openList.map(rowHtml).join('')||`<tr><td colspan="9" class="empty">${doneList.length?'Không còn việc chưa hoàn thành — xem “Việc đã hoàn thành” bên dưới.':'Không có nhiệm vụ'}</td></tr>`;
+  const wrap=$('#taskDoneWrap');
+  if(doneList.length){wrap.style.display='block';
+    $('#taskDoneBody').innerHTML=doneList.map(rowHtml).join('');
+    $('#taskDoneList').style.display=taskDoneOpen?'block':'none';
+    $('#taskDoneCaret').textContent=taskDoneOpen?'▾':'▸';
+    $('#taskDoneLabel').textContent=`Việc đã hoàn thành (${doneList.length}) — bấm để ${taskDoneOpen?'ẩn':'xem'}`;
+  }else{wrap.style.display='none';}
 }
+let taskDoneOpen=false;
+function toggleTaskDone(){taskDoneOpen=!taskDoneOpen;
+  $('#taskDoneList').style.display=taskDoneOpen?'block':'none';
+  $('#taskDoneCaret').textContent=taskDoneOpen?'▾':'▸';
+  const n=$('#taskDoneBody').querySelectorAll('tr').length;
+  $('#taskDoneLabel').textContent=`Việc đã hoàn thành (${n}) — bấm để ${taskDoneOpen?'ẩn':'xem'}`;
+}
+window.toggleTaskDone=toggleTaskDone;
 // Thứ tự ưu tiên khi sắp xếp trong tổ: việc đang làm lên trên, việc đã xong/hoãn/hủy xuống dưới
 function taskRank(t){return t.status==='done'?2:t.status==='hoan'?3:t.status==='huy'?4:0;}
 function teamBlock(tm){
