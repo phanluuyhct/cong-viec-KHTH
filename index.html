@@ -427,7 +427,7 @@
           <div id="collabPanel" style="display:none;position:absolute;z-index:20;left:0;right:0;top:46px;max-height:220px;overflow:auto;background:var(--card);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow);padding:6px"></div>
         </div>
       </div>
-      <div class="field"><label>Loại công việc</label><input id="fCat" placeholder="VD: Khám DN, Tuyển sinh, Đi nước ngoài..."></div>
+      <div class="field"><label>Lãnh đạo phụ trách nhiệm vụ (đánh giá KPI)</label><select id="fLeader"></select></div>
       <div class="three">
         <div class="field"><label>Trạng thái</label><select id="fStatus"><option value="todo">Cần làm</option><option value="doing">Đang làm</option><option value="review">Đang duyệt</option><option value="done">Hoàn thành</option><option value="hoan">Hoãn</option><option value="huy">Hủy</option></select></div>
         <div class="field"><label>Ưu tiên</label><select id="fPriority"><option value="cao">Cao</option><option value="trung">Trung bình</option><option value="thap">Thấp</option></select></div>
@@ -1649,6 +1649,7 @@ function fillTaskSelects(allowTeamId){
   $('#fTeam').innerHTML=opts.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')||'<option value="">(không có tổ được phép)</option>';
   $('#fProject').innerHTML='<option value="">— Không thuộc dự án —</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   $('#fAssignee').innerHTML='<option value="">— Chưa giao —</option>'+members.map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('');
+  $('#fLeader').innerHTML='<option value="">— Chưa phân —</option>'+leaderCandidates().map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('');
 }
 async function openTask(id){
   const t=id?tasks.find(x=>x.id===id):null;
@@ -1660,16 +1661,16 @@ async function openTask(id){
   $$('.tab').forEach(tb=>tb.classList.toggle('active',tb.dataset.tab==='sub'));
   $('#newTaskHint').style.display=t?'none':'block';
   $('#fTitle').value=t?.title||'';$('#fDesc').value=t?.description||'';
-  $('#fTeam').value=t?.team_id||(myLeadIds()[0]||me.teamIds?.[0]||teams[0]?.id||'');$('#fCat').value=t?.category||'';
+  $('#fTeam').value=t?.team_id||(myLeadIds()[0]||me.teamIds?.[0]||teams[0]?.id||'');
   $('#fProject').value=t?.project_id||'';
-  $('#fAssignee').value=t?.assignee_id||'';$('#fStatus').value=t?.status||'todo';
+  $('#fAssignee').value=t?.assignee_id||'';$('#fLeader').value=t?.leader_id||'';$('#fStatus').value=t?.status||'todo';
   $('#fPriority').value=t?.priority||'trung';$('#fStart').value=t?.start_date||'';$('#fDue').value=t?.due_date||'';$('#fProgress').value=t?.progress??0;
   const editable=t?canEdit(t):canCreate();
   // Nhân viên tự tạo việc mới: khóa "Chịu trách nhiệm chính" = chính mình, không giao cho người khác
   const lockAssignee=!t&&editable&&!canAssignOthers();
   // Nhân viên tự tạo việc VẪN chọn được "Người phối hợp" (họ là người phụ trách nên có quyền)
   renderCollabChecks(t?collabIdsOf(id):[], !editable);
-  ['fTitle','fDesc','fTeam','fCat','fAssignee','fStatus','fPriority','fStart','fDue','fProgress'].forEach(f=>$('#'+f).disabled=!editable);
+  ['fTitle','fDesc','fTeam','fAssignee','fLeader','fStatus','fPriority','fStart','fDue','fProgress'].forEach(f=>$('#'+f).disabled=!editable);
   fillKpiFields(t,editable);
   if(lockAssignee){$('#fAssignee').value=me.id;$('#fAssignee').disabled=true;}
   $('#tmSave').style.display=editable?'inline-flex':'none';
@@ -1680,14 +1681,15 @@ async function openTask(id){
 }
 window.openTask=openTask;
 // KPI theo HD20: chấm chất lượng/tiến độ do Lãnh đạo/Tổ trưởng (không phải người thực hiện tự chấm)
-function canEvalKpi(t){return me&&(canManageTask()||(t&&myLeadIds().includes(t.team_id)));}
+function canEvalKpi(t){return me&&(canManageTask()||(t&&myLeadIds().includes(t.team_id))||(t&&t.leader_id===me.id));}
 function fillKpiFields(t,editable){
   const cat=$('#fKpiCat');
   cat.innerHTML='<option value="">— Chọn loại việc —</option>'+kpiCatalog.filter(k=>k.active!==false).map(k=>`<option value="${k.id}" data-p="${k.points}">${esc(k.name)} (${k.points}đ)</option>`).join('');
   const pts=t?.kpi_points;
-  const match=(pts!=null)?kpiCatalog.find(k=>k.points===pts):null;
+  // Ưu tiên khớp theo tên loại việc (đã lưu ở "category"); nếu không có thì khớp theo điểm
+  const match=(t&&t.category&&kpiCatalog.find(k=>k.name===t.category))||((pts!=null)?kpiCatalog.find(k=>k.points===pts):null);
   cat.value=match?match.id:'';
-  $('#fKpiPoints').value=(pts!=null)?pts:'';
+  $('#fKpiPoints').value=(pts!=null)?pts:(match?match.points:'');
   const qOpts='<option value="">—</option>'+Object.entries(QUAL).map(([v,o])=>`<option value="${v}">${o.l}</option>`).join('');
   const tOpts='<option value="">—</option>'+Object.entries(TIMEL).map(([v,o])=>`<option value="${v}">${o.l}</option>`).join('');
   $('#fKpiQuality').innerHTML=qOpts;$('#fKpiTime').innerHTML=tOpts;
@@ -1723,8 +1725,12 @@ async function saveTask(){
   const title=$('#fTitle').value.trim();if(!title){toast('Nhập tên nhiệm vụ','err');return;}
   let prog=parseInt($('#fProgress').value)||0;const st=$('#fStatus').value;if(st==='done')prog=100;
   const kpiP=$('#fKpiPoints').value;
-  const obj={title,description:$('#fDesc').value.trim(),team_id:+$('#fTeam').value||null,project_id:+$('#fProject').value||null,category:$('#fCat').value.trim(),
-    assignee_id:$('#fAssignee').value||null,status:st,priority:$('#fPriority').value,start_date:$('#fStart').value||null,due_date:$('#fDue').value||null,progress:prog,
+  // "Loại việc (KPI)" đóng vai trò phân loại luôn: nếu chọn loại việc thì lấy tên đó làm "Loại";
+  // nếu không chọn thì giữ nguyên phân loại cũ của việc (không xóa dữ liệu cũ).
+  const kc=kpiCatalog.find(k=>String(k.id)===$('#fKpiCat').value);
+  const oldCat=editId?(tasks.find(t=>t.id===editId)?.category||null):null;
+  const obj={title,description:$('#fDesc').value.trim(),team_id:+$('#fTeam').value||null,project_id:+$('#fProject').value||null,category:kc?kc.name:oldCat,
+    assignee_id:$('#fAssignee').value||null,leader_id:$('#fLeader').value||null,status:st,priority:$('#fPriority').value,start_date:$('#fStart').value||null,due_date:$('#fDue').value||null,progress:prog,
     kpi_points:(kpiP===''?null:Math.max(0,Math.min(100,parseInt(kpiP)||0))),kpi_quality:$('#fKpiQuality').value||null,kpi_time:$('#fKpiTime').value||null};
   $('#tmSave').disabled=true;
   try{
