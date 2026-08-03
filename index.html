@@ -1195,7 +1195,15 @@ function renderTasks(){
       <td><span class="chip ${PRI[t.priority].cls}">${PRI[t.priority].label}</span></td>
       <td><div class="mini-bar"><i style="width:${t.progress}%;background:${dn?'var(--green)':'var(--accent)'}"></i></div> ${t.progress}%</td>
       <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;};
-  $('#taskBody').innerHTML=openList.map(rowHtml).join('')||`<tr><td colspan="9" class="empty">${doneList.length?'Không còn việc chưa hoàn thành — xem “Việc đã hoàn thành” bên dưới.':'Không có nhiệm vụ'}</td></tr>`;
+  // Nhóm việc chưa hoàn thành theo NGƯỜI PHỤ TRÁCH (kèm số lượng), nhóm nhiều việc lên trên
+  const grp={};
+  openList.forEach(t=>{const k=t.assignee_id||'__none__';(grp[k]=grp[k]||[]).push(t);});
+  const groups=Object.entries(grp).map(([k,arr])=>({k,arr,name:k==='__none__'?'(Chưa giao)':(member(k)?.full_name||'(Không rõ)')}))
+    .sort((a,b)=>(a.k==='__none__')-(b.k==='__none__')||b.arr.length-a.arr.length||a.name.localeCompare(b.name,'vi'));
+  $('#taskBody').innerHTML=groups.map(g=>
+    `<tr class="grp-row"><td colspan="9" style="background:var(--card2);font-weight:700;padding:8px 12px;border-top:2px solid var(--line)">👤 ${esc(g.name)} <span style="color:var(--muted);font-weight:500">· ${g.arr.length} việc</span></td></tr>`
+    +g.arr.map(rowHtml).join('')
+  ).join('')||`<tr><td colspan="9" class="empty">${doneList.length?'Không còn việc chưa hoàn thành — xem “Việc đã hoàn thành” bên dưới.':'Không có nhiệm vụ'}</td></tr>`;
   const wrap=$('#taskDoneWrap');
   if(doneList.length){wrap.style.display='block';
     $('#taskDoneBody').innerHTML=doneList.map(rowHtml).join('');
