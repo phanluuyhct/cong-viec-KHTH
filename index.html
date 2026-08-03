@@ -339,14 +339,14 @@
       <section class="view" id="view-tasks">
         <div id="taskFilterBar" style="margin-bottom:10px;display:none"></div>
         <div class="card" style="padding:0;overflow:auto">
-          <table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>Loại</th><th>Phụ trách</th><th>Người phối hợp</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody id="taskBody"></tbody></table>
+          <table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>LĐ phòng phụ trách</th><th>Phụ trách</th><th>Người phối hợp</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody id="taskBody"></tbody></table>
         </div>
         <div id="taskDoneWrap" style="margin-top:12px;display:none">
           <div onclick="toggleTaskDone()" style="cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:700;color:var(--green);padding:6px 2px;user-select:none">
             <span id="taskDoneCaret">▸</span><span id="taskDoneLabel">Việc đã hoàn thành</span>
           </div>
           <div id="taskDoneList" class="card" style="padding:0;overflow:auto;display:none;max-height:280px">
-            <table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>Loại</th><th>Phụ trách</th><th>Người phối hợp</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody id="taskDoneBody"></tbody></table>
+            <table><thead><tr><th>Nhiệm vụ</th><th>Tổ</th><th>LĐ phòng phụ trách</th><th>Phụ trách</th><th>Người phối hợp</th><th>Trạng thái</th><th>Ưu tiên</th><th>Tiến độ</th><th>Hạn</th></tr></thead><tbody id="taskDoneBody"></tbody></table>
           </div>
         </div>
       </section>
@@ -965,13 +965,14 @@ function renderKPI(){
   const scoped=$('#kpiMonth')?.value||'';
   const scopeLbl=scoped?ymLabel(scoped):'toàn bộ';
   const data=computeKPI(pool);
-  const active=data.filter(r=>r.total>0);
-  const avg=active.length?Math.round(active.reduce((a,b)=>a+b.score,0)/active.length):0;
-  const top=active[0];
+  // Thẻ "KPI trung bình" & "Xuất sắc nhất" tính theo Hướng dẫn 20 (A·B·C·D)
+  const hd=computeKpiHD20(pool).filter(r=>r.total>0).sort((a,b)=>b.kpi-a.kpi);
+  const hdAvg=hd.length?Math.round(hd.reduce((a,b)=>a+b.kpi,0)/hd.length):0;
+  const hdTop=hd[0];
   const totalDone=pool.filter(t=>t.status==='done').length, totalOd=pool.filter(isOverdue).length;
   $('#kpiStats').innerHTML=[
-    {k:'KPI trung bình',v:avg+'đ',s:active.length+' người có việc',bar:avg},
-    {k:'Xuất sắc nhất',v:top?top.m.full_name.split(' ').slice(-1)[0]:'—',s:top?top.score+' điểm':'chưa có'},
+    {k:'KPI trung bình (HD20)',v:hdAvg,s:hd.length+' người có điểm KPI',bar:Math.min(100,hdAvg)},
+    {k:'Xuất sắc nhất (HD20)',v:hdTop?hdTop.m.full_name.split(' ').slice(-1)[0]:'—',s:hdTop?hdTop.kpi+' điểm':'chưa có'},
     {k:'Tổng hoàn thành',v:totalDone,s:scoped?scopeLbl:'toàn phòng'},
     {k:'Tổng quá hạn',v:totalOd,s:'cần cải thiện'}
   ].map(x=>`<div class="card stat"><div class="k">${x.k}</div><div class="v" style="font-size:${(''+x.v).length>7?'20px':'28px'}">${esc(''+x.v)}</div><div class="sub">${x.s}</div>${x.bar!=null?`<div class="bar"><i style="width:${x.bar}%"></i></div>`:''}</div>`).join('');
@@ -1189,7 +1190,7 @@ function renderTasks(){
   const rowHtml=t=>{const m=member(t.assignee_id),o=isOverdue(t),dn=t.status==='done',dl=daysLeft(t.due_date);
     const collab=collabIdsOf(t.id).map(id=>member(id)?.full_name).filter(Boolean).join(', ');
     return `<tr class="${o?'row-od':''} ${dn?'row-dn':''}" onclick="openTask(${t.id})" style="cursor:pointer">
-      <td class="tc">${esc(t.title)}</td><td>${esc(team(t.team_id)?.name||'')}</td><td>${esc(t.category||'')}</td>
+      <td class="tc">${esc(t.title)}</td><td>${esc(team(t.team_id)?.name||'')}</td><td>${t.leader_id?esc(member(t.leader_id)?.full_name||'—'):'—'}</td>
       <td>${m?esc(m.full_name):'—'}</td><td>${collab?esc(collab):'—'}</td><td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td>
       <td><span class="chip ${PRI[t.priority].cls}">${PRI[t.priority].label}</span></td>
       <td><div class="mini-bar"><i style="width:${t.progress}%;background:${dn?'var(--green)':'var(--accent)'}"></i></div> ${t.progress}%</td>
