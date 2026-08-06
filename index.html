@@ -464,9 +464,10 @@
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0"><input type="checkbox" id="fHasDoc" style="width:auto;flex:0 0 auto;margin:0"> 📄 Nhiệm vụ này có gắn văn bản đến / trả lời</label>
         <div id="docBody" style="display:none;margin-top:8px">
         <div style="font-size:12px;font-weight:700;color:var(--muted);margin:2px 0 4px">📥 Văn bản đến</div>
+        <div class="field"><label style="font-weight:400;font-size:12px">Số văn bản</label><input id="fDocInNo" placeholder="VD: 667/VB-HCQT"></div>
         <div class="two">
-          <div class="field"><label style="font-weight:400;font-size:12px">Số văn bản</label><input id="fDocInNo" placeholder="VD: 667/VB-HCQT"></div>
-          <div class="field"><label style="font-weight:400;font-size:12px">Ngày đến</label><input type="date" id="fDocInDate"></div>
+          <div class="field"><label style="font-weight:400;font-size:12px">Ngày ký / ban hành</label><input type="date" id="fDocInSigned"></div>
+          <div class="field"><label style="font-weight:400;font-size:12px">Ngày đến (tới phòng)</label><input type="date" id="fDocInDate"></div>
         </div>
         <div class="field"><label style="font-weight:400;font-size:12px">Trích yếu</label><input id="fDocInSummary" placeholder="Nội dung tóm tắt văn bản đến"></div>
         <div class="addrow" style="flex-wrap:wrap;gap:6px">
@@ -1584,10 +1585,10 @@ function renderDocs(){
   if([...mSel.options].some(o=>o.value===curM))mSel.value=curM;
   const fMode=$('#docFilter').value, q=($('#docSearch').value||'').trim().toLowerCase(), mm=mSel.value;
   // Chỉ hiện nhiệm vụ có gắn văn bản (đến hoặc trả lời)
-  let rows=tasks.filter(t=>t.doc_in_no||t.doc_in_date||t.doc_in_summary||t.doc_in_url||t.doc_out_no||t.doc_out_date||t.doc_out_url);
-  if(fMode==='in')rows=rows.filter(t=>t.doc_in_no||t.doc_in_date||t.doc_in_url);
+  let rows=tasks.filter(t=>t.doc_in_no||t.doc_in_signed||t.doc_in_date||t.doc_in_summary||t.doc_in_url||t.doc_out_no||t.doc_out_date||t.doc_out_url);
+  if(fMode==='in')rows=rows.filter(t=>t.doc_in_no||t.doc_in_signed||t.doc_in_date||t.doc_in_url);
   else if(fMode==='out')rows=rows.filter(t=>t.doc_out_no||t.doc_out_date||t.doc_out_url);
-  else if(fMode==='pending')rows=rows.filter(t=>(t.doc_in_no||t.doc_in_date||t.doc_in_url)&&!(t.doc_out_no||t.doc_out_date||t.doc_out_url));
+  else if(fMode==='pending')rows=rows.filter(t=>(t.doc_in_no||t.doc_in_signed||t.doc_in_date||t.doc_in_url)&&!(t.doc_out_no||t.doc_out_date||t.doc_out_url));
   if(mm)rows=rows.filter(t=>String(t.doc_in_date||'').slice(0,7)===mm);
   if(q)rows=rows.filter(t=>[t.doc_in_no,t.doc_out_no,t.doc_in_summary,t.title].map(x=>String(x||'').toLowerCase()).some(x=>x.includes(q)));
   rows.sort((a,b)=>String(b.doc_in_date||'').localeCompare(String(a.doc_in_date||'')));
@@ -1601,7 +1602,7 @@ function renderDocs(){
     const summ=esc(t.doc_in_summary||'')||('<span style="color:var(--muted)">'+esc(t.title)+'</span>');
     return `<tr style="cursor:pointer" onclick="openTask(${t.id})">
       <td style="white-space:nowrap;font-weight:600">${esc(t.doc_in_no||'—')}</td>
-      <td style="white-space:nowrap">${fmtDMY(t.doc_in_date)}</td>
+      <td style="white-space:nowrap">${fmtDMY(t.doc_in_date)}${t.doc_in_signed?`<div style="font-size:11px;color:var(--muted)">Ký: ${fmtDMY(t.doc_in_signed)}</div>`:''}</td>
       <td><div style="font-weight:600">${summ}</div><div style="font-size:12px;color:var(--muted)">📌 ${esc(t.title)}</div></td>
       <td><span class="badge ${st.cls}">${esc(st.label)}</span> ${ans}</td>
       <td style="white-space:nowrap;font-weight:600">${esc(t.doc_out_no||'—')}</td>
@@ -1821,13 +1822,13 @@ window.onKpiCatChange=()=>{const o=$('#fKpiCat').selectedOptions[0];const p=o&&o
 /* ===== Văn bản đến / trả lời ===== */
 function docLinkHtml(url){if(!url)return '';const isDrive=/drive\.google|docs\.google/i.test(url);return `<a href="${esc(url)}" target="_blank" style="color:var(--accent);text-decoration:underline">${isDrive?'🔗 Mở link Drive':'📎 Mở tệp văn bản'}</a>`;}
 function fillDocFields(t,editable){
-  $('#fDocInNo').value=t?.doc_in_no||'';$('#fDocInDate').value=t?.doc_in_date||'';$('#fDocInSummary').value=t?.doc_in_summary||'';$('#fDocInUrl').value=t?.doc_in_url||'';
+  $('#fDocInNo').value=t?.doc_in_no||'';$('#fDocInSigned').value=t?.doc_in_signed||'';$('#fDocInDate').value=t?.doc_in_date||'';$('#fDocInSummary').value=t?.doc_in_summary||'';$('#fDocInUrl').value=t?.doc_in_url||'';
   $('#fDocOutNo').value=t?.doc_out_no||'';$('#fDocOutDate').value=t?.doc_out_date||'';$('#fDocOutUrl').value=t?.doc_out_url||'';
   $('#docInLink').innerHTML=docLinkHtml(t?.doc_in_url);$('#docOutLink').innerHTML=docLinkHtml(t?.doc_out_url);
-  const hasDoc=!!(t&&(t.doc_in_no||t.doc_in_date||t.doc_in_summary||t.doc_in_url||t.doc_out_no||t.doc_out_date||t.doc_out_url));
+  const hasDoc=!!(t&&(t.doc_in_no||t.doc_in_signed||t.doc_in_date||t.doc_in_summary||t.doc_in_url||t.doc_out_no||t.doc_out_date||t.doc_out_url));
   $('#fHasDoc').checked=hasDoc;$('#docBody').style.display=hasDoc?'':'none';
   $('#fHasDoc').disabled=!editable;
-  ['fDocInNo','fDocInDate','fDocInSummary','fDocInUrl','fDocOutNo','fDocOutDate','fDocOutUrl','fDocInFile','fDocOutFile','btnDocInUp','btnDocOutUp'].forEach(f=>$('#'+f).disabled=!editable);
+  ['fDocInNo','fDocInSigned','fDocInDate','fDocInSummary','fDocInUrl','fDocOutNo','fDocOutDate','fDocOutUrl','fDocInFile','fDocOutFile','btnDocInUp','btnDocOutUp'].forEach(f=>$('#'+f).disabled=!editable);
 }
 $('#fHasDoc').onchange=e=>{$('#docBody').style.display=e.target.checked?'':'none';};
 async function uploadDoc(fileInputId,urlInputId,linkId,btnId){
@@ -1880,7 +1881,7 @@ async function saveTask(){
   const obj={title,description:$('#fDesc').value.trim(),team_id:+$('#fTeam').value||null,project_id:+$('#fProject').value||null,category:kc?kc.name:oldCat,
     assignee_id:$('#fAssignee').value||null,leader_id:$('#fLeader').value||null,status:st,priority:$('#fPriority').value,start_date:$('#fStart').value||null,due_date:$('#fDue').value||null,progress:prog,
     kpi_points:(kpiP===''?null:Math.max(0,Math.min(100,parseInt(kpiP)||0))),kpi_quality:$('#fKpiQuality').value||null,kpi_time:$('#fKpiTime').value||null,
-    doc_in_no:hasDoc?($('#fDocInNo').value.trim()||null):null,doc_in_date:hasDoc?($('#fDocInDate').value||null):null,doc_in_summary:hasDoc?($('#fDocInSummary').value.trim()||null):null,doc_in_url:hasDoc?($('#fDocInUrl').value.trim()||null):null,
+    doc_in_no:hasDoc?($('#fDocInNo').value.trim()||null):null,doc_in_signed:hasDoc?($('#fDocInSigned').value||null):null,doc_in_date:hasDoc?($('#fDocInDate').value||null):null,doc_in_summary:hasDoc?($('#fDocInSummary').value.trim()||null):null,doc_in_url:hasDoc?($('#fDocInUrl').value.trim()||null):null,
     doc_out_no:hasDoc?($('#fDocOutNo').value.trim()||null):null,doc_out_date:hasDoc?($('#fDocOutDate').value||null):null,doc_out_url:hasDoc?($('#fDocOutUrl').value.trim()||null):null};
   $('#tmSave').disabled=true;
   try{
