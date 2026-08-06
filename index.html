@@ -404,10 +404,10 @@
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
           <div class="legend" style="margin:0"><span>Theo dõi văn bản đến và văn bản trả lời — gắn với từng nhiệm vụ. Bấm dòng để mở nhiệm vụ.</span></div>
           <input id="docSearch" class="sel" placeholder="🔍 Tìm số / trích yếu…" style="margin-left:auto;min-width:180px">
-          <select class="sel" id="docFilter"><option value="">Tất cả văn bản</option><option value="in">Có văn bản đến</option><option value="pending">Chưa trả lời</option><option value="out">Đã trả lời</option></select>
+          <select class="sel" id="docFilter"><option value="">Tất cả loại</option><option value="in">📥 Văn bản đến</option><option value="out">📤 Văn bản đi (trả lời)</option><option value="pending">⏳ Đến chưa trả lời</option></select>
           <select class="sel" id="docMonth"><option value="">Tất cả tháng</option></select>
         </div>
-        <div class="card" style="padding:0;overflow:auto"><table id="docsTable"><thead><tr><th>Số đến</th><th>Ngày đến</th><th>Trích yếu / Nhiệm vụ</th><th>Tình trạng</th><th>Số trả lời</th><th>Ngày trả lời</th><th>Tệp</th></tr></thead><tbody id="docsBody"></tbody></table></div>
+        <div class="card" style="padding:0;overflow:auto"><table id="docsTable"><thead><tr><th>Loại</th><th>Số đến</th><th>Ngày đến</th><th>Trích yếu / Nhiệm vụ</th><th>Tình trạng</th><th>Số văn bản</th><th>Ngày ký</th><th>Tệp</th></tr></thead><tbody id="docsBody"></tbody></table></div>
       </section>
       <section class="view" id="view-staff">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap"><div class="legend" style="margin:0"><span id="staffNote">Danh sách cán bộ trong phòng.</span></div><button class="btn hidden" id="btnBackup" style="margin-left:auto">💾 Sao lưu dữ liệu</button><button class="btn primary hidden" id="btnAddUser">＋ Thêm nhân viên</button></div>
@@ -1593,14 +1593,17 @@ function renderDocs(){
   if(q)rows=rows.filter(t=>[t.doc_in_no,t.doc_out_no,t.doc_in_summary,t.title].map(x=>String(x||'').toLowerCase()).some(x=>x.includes(q)));
   rows.sort((a,b)=>String(b.doc_in_date||'').localeCompare(String(a.doc_in_date||'')));
   $('#viewTitle')&&null;
-  if(!rows.length){body.innerHTML='<tr><td colspan="7" class="empty" style="padding:24px;text-align:center">Chưa có văn bản nào được gắn với nhiệm vụ.<br>Mở một nhiệm vụ và điền mục “Văn bản đến / trả lời”.</td></tr>';return;}
+  if(!rows.length){body.innerHTML='<tr><td colspan="8" class="empty" style="padding:24px;text-align:center">Chưa có văn bản nào được gắn với nhiệm vụ.<br>Mở một nhiệm vụ và điền mục “Văn bản đến / trả lời”.</td></tr>';return;}
   body.innerHTML=rows.map(t=>{
+    const hasIn=!!(t.doc_in_no||t.doc_in_signed||t.doc_in_date||t.doc_in_url);
     const answered=!!(t.doc_out_no||t.doc_out_date||t.doc_out_url);
     const st=STATUS[t.status]||{label:t.status,cls:'b-todo'};
-    const ans=answered?'<span class="badge b-done">Đã trả lời</span>':((t.doc_in_no||t.doc_in_url)?'<span class="badge b-hoan">Chưa trả lời</span>':'—');
+    const ans=answered?'<span class="badge b-done">Đã trả lời</span>':(hasIn?'<span class="badge b-hoan">Chưa trả lời</span>':'—');
+    const loai=[hasIn?'<span class="badge b-doing">📥 Đến</span>':'',answered?'<span class="badge b-review">📤 Đi</span>':''].filter(Boolean).join(' ')||'—';
     const files=[t.doc_in_url?`<div>${docLinkHtml(t.doc_in_url)}</div>`:'',t.doc_out_url?`<div>${docLinkHtml(t.doc_out_url)}</div>`:''].join('')||'—';
     const summ=esc(t.doc_in_summary||'')||('<span style="color:var(--muted)">'+esc(t.title)+'</span>');
     return `<tr style="cursor:pointer" onclick="openTask(${t.id})">
+      <td style="white-space:nowrap">${loai}</td>
       <td style="white-space:nowrap;font-weight:600">${esc(t.doc_in_no||'—')}</td>
       <td style="white-space:nowrap">${fmtDMY(t.doc_in_date)}${t.doc_in_signed?`<div style="font-size:11px;color:var(--muted)">Ký: ${fmtDMY(t.doc_in_signed)}</div>`:''}</td>
       <td><div style="font-weight:600">${summ}</div><div style="font-size:12px;color:var(--muted)">📌 ${esc(t.title)}</div></td>
