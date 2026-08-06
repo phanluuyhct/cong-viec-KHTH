@@ -287,6 +287,7 @@
     <button class="nav-item" data-view="kpi"><span class="ic">📈</span> KPI & Thống kê</button>
     <button class="nav-item" data-view="report"><span class="ic">📝</span> Báo cáo tháng <span id="reportNavDot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--red)"></span></button>
     <button class="nav-item" data-view="gantt"><span class="ic">📶</span> Gantt</button>
+    <button class="nav-item" data-view="docs"><span class="ic">📨</span> Sổ văn bản</button>
     <button class="nav-item" data-view="staff" id="navStaff"><span class="ic">👥</span> Nhân sự <span id="staffCount" style="margin-left:auto;background:var(--bg2);color:var(--muted);border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700"></span></button>
     <div class="userbox">
       <div class="nm" id="uName">—</div>
@@ -367,6 +368,7 @@
           <button class="btn hidden" id="btnKpiCatalog" style="margin-left:auto">⚙️ Danh mục điểm</button>
         </div>
         <div style="font-size:12px;color:var(--muted);margin:2px 0 6px">A = số lượng, B = chất lượng, C = tiến độ. KPI = (A+B+C)/3×100 (lãnh đạo +D/4). Nhóm: ≥70 tốt · 50–&lt;70 đạt · &lt;50 chưa đạt. Tính theo kỳ đã chọn ở trên. Việc nhiều người: người chính 70% điểm, nhóm phối hợp chia đều 30%.</div>
+        <div id="kpiNeedWarn" style="display:none;margin:2px 0 8px"></div>
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Việc (điểm giao)</th><th>A</th><th>B</th><th>C</th><th>D</th><th>KPI</th><th>Xếp nhóm</th></tr></thead><tbody id="kpiHdBody"></tbody></table></div>
         <div class="section-title">⚖️ Cân đối khối lượng (việc chưa hoàn thành)</div>
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Chưa xong</th><th>Đang làm</th><th>Quá hạn</th><th>Đánh giá</th></tr></thead><tbody id="kpiWorkloadBody"></tbody></table></div>
@@ -397,6 +399,15 @@
       <section class="view" id="view-calendar">
         <div class="cal-head"><button class="btn" id="calPrev">‹</button><h3 id="calLabel" style="min-width:150px;text-align:center"></h3><button class="btn" id="calNext">›</button><button class="btn" id="calToday">Hôm nay</button></div>
         <div class="cal-grid" id="calGrid"></div>
+      </section>
+      <section class="view" id="view-docs">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+          <div class="legend" style="margin:0"><span>Theo dõi văn bản đến và văn bản trả lời — gắn với từng nhiệm vụ. Bấm dòng để mở nhiệm vụ.</span></div>
+          <input id="docSearch" class="sel" placeholder="🔍 Tìm số / trích yếu…" style="margin-left:auto;min-width:180px">
+          <select class="sel" id="docFilter"><option value="">Tất cả văn bản</option><option value="in">Có văn bản đến</option><option value="pending">Chưa trả lời</option><option value="out">Đã trả lời</option></select>
+          <select class="sel" id="docMonth"><option value="">Tất cả tháng</option></select>
+        </div>
+        <div class="card" style="padding:0;overflow:auto"><table id="docsTable"><thead><tr><th>Số đến</th><th>Ngày đến</th><th>Trích yếu / Nhiệm vụ</th><th>Tình trạng</th><th>Số trả lời</th><th>Ngày trả lời</th><th>Tệp</th></tr></thead><tbody id="docsBody"></tbody></table></div>
       </section>
       <section class="view" id="view-staff">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap"><div class="legend" style="margin:0"><span id="staffNote">Danh sách cán bộ trong phòng.</span></div><button class="btn hidden" id="btnBackup" style="margin-left:auto">💾 Sao lưu dữ liệu</button><button class="btn primary hidden" id="btnAddUser">＋ Thêm nhân viên</button></div>
@@ -447,6 +458,35 @@
           <div class="field"><label style="font-weight:400;font-size:12px">Tiến độ (C)</label><select id="fKpiTime"></select></div>
         </div>
         <p id="kpiEvalNote" style="color:var(--muted2);font-size:11px;margin:4px 0 0">Chất lượng &amp; tiến độ do Lãnh đạo/Tổ trưởng chấm khi việc hoàn thành.</p>
+      </div>
+
+      <div class="field" id="docFields" style="background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:10px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0"><input type="checkbox" id="fHasDoc" style="width:auto;flex:0 0 auto;margin:0"> 📄 Nhiệm vụ này có gắn văn bản đến / trả lời</label>
+        <div id="docBody" style="display:none;margin-top:8px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin:2px 0 4px">📥 Văn bản đến</div>
+        <div class="two">
+          <div class="field"><label style="font-weight:400;font-size:12px">Số văn bản</label><input id="fDocInNo" placeholder="VD: 667/VB-HCQT"></div>
+          <div class="field"><label style="font-weight:400;font-size:12px">Ngày đến</label><input type="date" id="fDocInDate"></div>
+        </div>
+        <div class="field"><label style="font-weight:400;font-size:12px">Trích yếu</label><input id="fDocInSummary" placeholder="Nội dung tóm tắt văn bản đến"></div>
+        <div class="addrow" style="flex-wrap:wrap;gap:6px">
+          <input id="fDocInUrl" placeholder="Dán link (Google Drive…) hoặc tải tệp →" style="flex:1;min-width:150px">
+          <input type="file" id="fDocInFile" style="flex:0 0 auto;max-width:160px;width:auto">
+          <button class="btn" id="btnDocInUp" type="button">Tải lên</button>
+        </div>
+        <div id="docInLink" style="font-size:12px;margin-top:4px"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin:10px 0 4px">📤 Văn bản trả lời (khi hoàn tất)</div>
+        <div class="two">
+          <div class="field"><label style="font-weight:400;font-size:12px">Số văn bản</label><input id="fDocOutNo" placeholder="VD: 798/KHTH"></div>
+          <div class="field"><label style="font-weight:400;font-size:12px">Ngày trả lời</label><input type="date" id="fDocOutDate"></div>
+        </div>
+        <div class="addrow" style="flex-wrap:wrap;gap:6px">
+          <input id="fDocOutUrl" placeholder="Dán link (Google Drive…) hoặc tải tệp →" style="flex:1;min-width:150px">
+          <input type="file" id="fDocOutFile" style="flex:0 0 auto;max-width:160px;width:auto">
+          <button class="btn" id="btnDocOutUp" type="button">Tải lên</button>
+        </div>
+        <div id="docOutLink" style="font-size:12px;margin-top:4px"></div>
+        </div>
       </div>
 
       <div class="tabs" id="detailTabs" style="display:none">
@@ -674,6 +714,9 @@ const PRI={cao:{label:'Cao',cls:'pri-cao'},trung:{label:'Trung bình',cls:'pri-t
 // KPI theo Hướng dẫn 20: mức chất lượng (B) & tiến độ (C) kèm hệ số điểm
 const QUAL={exceed:{l:'Vượt mức (120%)',p:1.2},ok:{l:'Đảm bảo (100%)',p:1.0},r1:{l:'Sửa 1 lần (75%)',p:0.75},r24:{l:'Sửa 2–4 lần (50%)',p:0.5},r56:{l:'Sửa 5–6 lần (25%)',p:0.25},r7:{l:'Sửa ≥7 lần (0%)',p:0}};
 const TIMEL={early:{l:'Vượt tiến độ (120%)',p:1.2},ontime:{l:'Đúng hạn (100%)',p:1.0},late1:{l:'Nhắc 1 lần (75%)',p:0.75},late2:{l:'Nhắc 2 lần (50%)',p:0.5},late3:{l:'Nhắc 3 lần (25%)',p:0.25},late4:{l:'Nhắc ≥4 lần (0%)',p:0}};
+// Việc "chưa đánh giá KPI": chưa gán loại việc/điểm, HOẶC đã xong mà chưa chấm chất lượng/tiến độ
+function kpiMissReason(t){if(!t||t.status==='huy')return null;if(t.kpi_points==null)return 'point';if(t.status==='done'&&(!t.kpi_quality||!t.kpi_time))return 'eval';return null;}
+function needsKpi(t){return !!kpiMissReason(t);}
 const ROLE={admin:{label:'Quản trị hệ thống',cls:'rb-admin'},truong_phong:{label:'Trưởng phòng',cls:'rb-tp'},pho_truong_phong:{label:'Phó trưởng phòng',cls:'rb-pho'},tro_ly:{label:'Trợ lý LĐ phòng',cls:'rb-tro'},to_truong:{label:'Tổ trưởng',cls:'rb-tt'},nhan_vien:{label:'Nhân viên',cls:'rb-nv'}};
 
 /* ================= Helpers ================= */
@@ -895,6 +938,7 @@ function filtered(){
     else if(drillFilter.type==='priority')list=list.filter(t=>t.priority===drillFilter.value);
     else if(drillFilter.type==='overdue')list=list.filter(isOverdue);
     else if(drillFilter.type==='soon')list=list.filter(isSoon);
+    else if(drillFilter.type==='needkpi')list=list.filter(needsKpi);
   }
   return list;
 }
@@ -903,8 +947,9 @@ function drillStatus(s){drillFilter={type:'status',value:s,label:'Trạng thái:
 function drillPriority(p){drillFilter={type:'priority',value:p,label:'Ưu tiên: '+PRI[p].label};clearDrillDropdowns();renderAll();nav('tasks');}
 function drillOverdue(){drillFilter={type:'overdue',label:'Quá hạn'};clearDrillDropdowns();renderAll();nav('tasks');}
 function drillSoon(){drillFilter={type:'soon',label:'Sắp tới hạn'};clearDrillDropdowns();renderAll();nav('tasks');}
+function drillNeedKpi(){drillFilter={type:'needkpi',label:'Chưa đánh giá KPI'};clearDrillDropdowns();renderAll();nav('tasks');}
 function drillClear(){drillFilter=null;clearDrillDropdowns();renderAll();}
-window.drillStatus=drillStatus;window.drillPriority=drillPriority;window.drillOverdue=drillOverdue;window.drillSoon=drillSoon;window.drillClear=drillClear;
+window.drillStatus=drillStatus;window.drillPriority=drillPriority;window.drillOverdue=drillOverdue;window.drillSoon=drillSoon;window.drillNeedKpi=drillNeedKpi;window.drillClear=drillClear;
 function activeFilterChips(){
   const parts=[];
   if(drillFilter)parts.push(drillFilter.label);
@@ -916,7 +961,7 @@ function activeFilterChips(){
 }
 
 /* ================= Render ================= */
-function renderAll(){fillFilters();renderDashboard();renderKanban();renderTasks();renderTeams();renderProjects();renderCalendar();renderKPI();renderGantt();renderReport();renderStaff();}
+function renderAll(){fillFilters();renderDashboard();renderKanban();renderTasks();renderTeams();renderProjects();renderCalendar();renderKPI();renderGantt();renderReport();renderStaff();renderDocs();}
 
 function barChart(title,rows){
   const max=Math.max(1,...rows.map(r=>r.count)), total=rows.reduce((a,b)=>a+b.count,0);
@@ -1045,6 +1090,14 @@ function renderKPI(){
   // KPI theo Hướng dẫn 20 (dùng đúng kỳ đã lọc ở trên)
   $('#btnKpiCatalog').classList.toggle('hidden',!canManageTask());
   renderKpiHD20(pool);
+  // Nhắc: việc chưa đánh giá KPI (chưa gán điểm / xong chưa chấm) trong kỳ
+  const needPoint=pool.filter(t=>kpiMissReason(t)==='point').length;
+  const needEval=pool.filter(t=>kpiMissReason(t)==='eval').length;
+  const warn=$('#kpiNeedWarn');
+  if(needPoint+needEval>0){warn.style.display='block';
+    warn.innerHTML=`<div onclick="drillNeedKpi()" style="cursor:pointer;background:var(--amberbg);border:1px solid var(--amber);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--txt)">
+      ⚠️ <b>${needPoint+needEval} việc chưa đánh giá KPI</b> trong kỳ${needEval?` · ${needEval} việc đã xong chưa chấm chất lượng/tiến độ`:''}${needPoint?` · ${needPoint} việc chưa gán loại việc/điểm`:''}. <span style="text-decoration:underline">Bấm để xem danh sách</span>.</div>`;
+  }else{warn.style.display='none';}
 }
 // ===== KPI theo Hướng dẫn 20 (A·B·C·D) =====
 // Chia điểm theo vai trò: người chính giữ MAIN_SHARE, phần còn lại chia đều cho nhóm phối hợp.
@@ -1189,19 +1242,21 @@ function renderTasks(){
   const doneList=all.filter(t=>t.status==='done').sort((a,b)=>new Date(b.completed_at||b.due_date||'0')-new Date(a.completed_at||a.due_date||'0'));
   const rowHtml=t=>{const m=member(t.assignee_id),o=isOverdue(t),dn=t.status==='done',dl=daysLeft(t.due_date);
     const collab=collabIdsOf(t.id).map(id=>member(id)?.full_name).filter(Boolean).join(', ');
+    const km=kpiMissReason(t);
+    const kmChip=km==='eval'?' <span class="chip pri-cao" style="font-size:10px" title="Việc đã hoàn thành nhưng chưa chấm chất lượng/tiến độ">⚠ chưa chấm KPI</span>':km==='point'?' <span class="chip pri-trung" style="font-size:10px" title="Chưa chọn Loại việc (điểm) nên chưa vào KPI">⚠ chưa gán điểm</span>':'';
     return `<tr class="${o?'row-od':''} ${dn?'row-dn':''}" onclick="openTask(${t.id})" style="cursor:pointer">
-      <td class="tc">${esc(t.title)}</td><td>${esc(team(t.team_id)?.name||'')}</td><td>${t.leader_id?esc(member(t.leader_id)?.full_name||'—'):'—'}</td>
+      <td class="tc">${esc(t.title)}${kmChip}</td><td>${esc(team(t.team_id)?.name||'')}</td><td>${t.leader_id?esc(member(t.leader_id)?.full_name||'—'):'—'}</td>
       <td>${m?esc(m.full_name):'—'}</td><td>${collab?esc(collab):'—'}</td><td><span class="badge ${STATUS[t.status].cls}">${STATUS[t.status].label}</span></td>
       <td><span class="chip ${PRI[t.priority].cls}">${PRI[t.priority].label}</span></td>
       <td><div class="mini-bar"><i style="width:${t.progress}%;background:${dn?'var(--green)':'var(--accent)'}"></i></div> ${t.progress}%</td>
       <td>${t.due_date?fmtDate(t.due_date)+(o?` <span class="chip pri-cao">trễ ${Math.abs(dl)}d</span>`:''):'—'}</td></tr>`;};
-  // Nhóm việc chưa hoàn thành theo NGƯỜI PHỤ TRÁCH (kèm số lượng), nhóm nhiều việc lên trên
+  // Nhóm việc chưa hoàn thành theo LÃNH ĐẠO PHỤ TRÁCH (kèm số lượng), nhóm nhiều việc lên trên
   const grp={};
-  openList.forEach(t=>{const k=t.assignee_id||'__none__';(grp[k]=grp[k]||[]).push(t);});
-  const groups=Object.entries(grp).map(([k,arr])=>({k,arr,name:k==='__none__'?'(Chưa giao)':(member(k)?.full_name||'(Không rõ)')}))
+  openList.forEach(t=>{const k=t.leader_id||'__none__';(grp[k]=grp[k]||[]).push(t);});
+  const groups=Object.entries(grp).map(([k,arr])=>({k,arr,name:k==='__none__'?'(Chưa phân lãnh đạo)':(member(k)?.full_name||'(Không rõ)')}))
     .sort((a,b)=>(a.k==='__none__')-(b.k==='__none__')||b.arr.length-a.arr.length||a.name.localeCompare(b.name,'vi'));
   $('#taskBody').innerHTML=groups.map(g=>
-    `<tr class="grp-row"><td colspan="9" style="background:var(--card2);font-weight:700;padding:8px 12px;border-top:2px solid var(--line)">👤 ${esc(g.name)} <span style="color:var(--muted);font-weight:500">· ${g.arr.length} việc</span></td></tr>`
+    `<tr class="grp-row"><td colspan="9" style="background:var(--card2);font-weight:700;padding:8px 12px;border-top:2px solid var(--line)">👔 LĐ phụ trách: ${esc(g.name)} <span style="color:var(--muted);font-weight:500">· ${g.arr.length} việc</span></td></tr>`
     +g.arr.map(rowHtml).join('')
   ).join('')||`<tr><td colspan="9" class="empty">${doneList.length?'Không còn việc chưa hoàn thành — xem “Việc đã hoàn thành” bên dưới.':'Không có nhiệm vụ'}</td></tr>`;
   const wrap=$('#taskDoneWrap');
@@ -1517,6 +1572,47 @@ function renderGantt(){
 $('#ganttProject')&&($('#ganttProject').onchange=renderGantt);
 $('#ganttStatus')&&($('#ganttStatus').onchange=renderGantt);
 $('#ganttRange')&&($('#ganttRange').onchange=renderGantt);
+/* ================= Sổ văn bản đến/đi ================= */
+function fmtDMY(d){if(!d)return '—';const x=new Date(d);return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();}
+function renderDocs(){
+  const body=$('#docsBody');if(!body)return;
+  // Nạp bộ chọn tháng (theo ngày văn bản đến), giữ lựa chọn hiện tại
+  const mSel=$('#docMonth');
+  const monthsSet=[...new Set(tasks.filter(t=>t.doc_in_date).map(t=>String(t.doc_in_date).slice(0,7)))].sort().reverse();
+  const curM=mSel.value;
+  mSel.innerHTML='<option value="">Tất cả tháng</option>'+monthsSet.map(ym=>`<option value="${ym}">${ymLabel(ym)}</option>`).join('');
+  if([...mSel.options].some(o=>o.value===curM))mSel.value=curM;
+  const fMode=$('#docFilter').value, q=($('#docSearch').value||'').trim().toLowerCase(), mm=mSel.value;
+  // Chỉ hiện nhiệm vụ có gắn văn bản (đến hoặc trả lời)
+  let rows=tasks.filter(t=>t.doc_in_no||t.doc_in_date||t.doc_in_summary||t.doc_in_url||t.doc_out_no||t.doc_out_date||t.doc_out_url);
+  if(fMode==='in')rows=rows.filter(t=>t.doc_in_no||t.doc_in_date||t.doc_in_url);
+  else if(fMode==='out')rows=rows.filter(t=>t.doc_out_no||t.doc_out_date||t.doc_out_url);
+  else if(fMode==='pending')rows=rows.filter(t=>(t.doc_in_no||t.doc_in_date||t.doc_in_url)&&!(t.doc_out_no||t.doc_out_date||t.doc_out_url));
+  if(mm)rows=rows.filter(t=>String(t.doc_in_date||'').slice(0,7)===mm);
+  if(q)rows=rows.filter(t=>[t.doc_in_no,t.doc_out_no,t.doc_in_summary,t.title].map(x=>String(x||'').toLowerCase()).some(x=>x.includes(q)));
+  rows.sort((a,b)=>String(b.doc_in_date||'').localeCompare(String(a.doc_in_date||'')));
+  $('#viewTitle')&&null;
+  if(!rows.length){body.innerHTML='<tr><td colspan="7" class="empty" style="padding:24px;text-align:center">Chưa có văn bản nào được gắn với nhiệm vụ.<br>Mở một nhiệm vụ và điền mục “Văn bản đến / trả lời”.</td></tr>';return;}
+  body.innerHTML=rows.map(t=>{
+    const answered=!!(t.doc_out_no||t.doc_out_date||t.doc_out_url);
+    const st=STATUS[t.status]||{label:t.status,cls:'b-todo'};
+    const ans=answered?'<span class="badge b-done">Đã trả lời</span>':((t.doc_in_no||t.doc_in_url)?'<span class="badge b-hoan">Chưa trả lời</span>':'—');
+    const files=[t.doc_in_url?`<div>${docLinkHtml(t.doc_in_url)}</div>`:'',t.doc_out_url?`<div>${docLinkHtml(t.doc_out_url)}</div>`:''].join('')||'—';
+    const summ=esc(t.doc_in_summary||'')||('<span style="color:var(--muted)">'+esc(t.title)+'</span>');
+    return `<tr style="cursor:pointer" onclick="openTask(${t.id})">
+      <td style="white-space:nowrap;font-weight:600">${esc(t.doc_in_no||'—')}</td>
+      <td style="white-space:nowrap">${fmtDMY(t.doc_in_date)}</td>
+      <td><div style="font-weight:600">${summ}</div><div style="font-size:12px;color:var(--muted)">📌 ${esc(t.title)}</div></td>
+      <td><span class="badge ${st.cls}">${esc(st.label)}</span> ${ans}</td>
+      <td style="white-space:nowrap;font-weight:600">${esc(t.doc_out_no||'—')}</td>
+      <td style="white-space:nowrap">${fmtDMY(t.doc_out_date)}</td>
+      <td onclick="event.stopPropagation()" style="font-size:12.5px">${files}</td>
+    </tr>`;
+  }).join('');
+}
+$('#docFilter')&&($('#docFilter').onchange=renderDocs);
+$('#docMonth')&&($('#docMonth').onchange=renderDocs);
+$('#docSearch')&&($('#docSearch').oninput=renderDocs);
 $('#dayClose').onclick=()=>$('#dayModal').classList.remove('show');
 $('#dayModal').onclick=e=>{if(e.target.id==='dayModal')$('#dayModal').classList.remove('show');};
 let calDate=new Date();
@@ -1693,6 +1789,7 @@ async function openTask(id){
   renderCollabChecks(t?collabIdsOf(id):[], !editable);
   ['fTitle','fDesc','fTeam','fAssignee','fLeader','fStatus','fPriority','fStart','fDue','fProgress'].forEach(f=>$('#'+f).disabled=!editable);
   fillKpiFields(t,editable);
+  fillDocFields(t,editable);
   if(lockAssignee){$('#fAssignee').value=me.id;$('#fAssignee').disabled=true;}
   $('#tmSave').style.display=editable?'inline-flex':'none';
   $('#tmDelete').style.display=(t&&canDelete(t))?'inline-flex':'none';
@@ -1721,6 +1818,35 @@ function fillKpiFields(t,editable){
   $('#kpiEvalNote').style.display=canEval?'none':'block';
 }
 window.onKpiCatChange=()=>{const o=$('#fKpiCat').selectedOptions[0];const p=o&&o.dataset.p;if(p!=null&&p!=='')$('#fKpiPoints').value=p;};
+/* ===== Văn bản đến / trả lời ===== */
+function docLinkHtml(url){if(!url)return '';const isDrive=/drive\.google|docs\.google/i.test(url);return `<a href="${esc(url)}" target="_blank" style="color:var(--accent);text-decoration:underline">${isDrive?'🔗 Mở link Drive':'📎 Mở tệp văn bản'}</a>`;}
+function fillDocFields(t,editable){
+  $('#fDocInNo').value=t?.doc_in_no||'';$('#fDocInDate').value=t?.doc_in_date||'';$('#fDocInSummary').value=t?.doc_in_summary||'';$('#fDocInUrl').value=t?.doc_in_url||'';
+  $('#fDocOutNo').value=t?.doc_out_no||'';$('#fDocOutDate').value=t?.doc_out_date||'';$('#fDocOutUrl').value=t?.doc_out_url||'';
+  $('#docInLink').innerHTML=docLinkHtml(t?.doc_in_url);$('#docOutLink').innerHTML=docLinkHtml(t?.doc_out_url);
+  const hasDoc=!!(t&&(t.doc_in_no||t.doc_in_date||t.doc_in_summary||t.doc_in_url||t.doc_out_no||t.doc_out_date||t.doc_out_url));
+  $('#fHasDoc').checked=hasDoc;$('#docBody').style.display=hasDoc?'':'none';
+  $('#fHasDoc').disabled=!editable;
+  ['fDocInNo','fDocInDate','fDocInSummary','fDocInUrl','fDocOutNo','fDocOutDate','fDocOutUrl','fDocInFile','fDocOutFile','btnDocInUp','btnDocOutUp'].forEach(f=>$('#'+f).disabled=!editable);
+}
+$('#fHasDoc').onchange=e=>{$('#docBody').style.display=e.target.checked?'':'none';};
+async function uploadDoc(fileInputId,urlInputId,linkId,btnId){
+  const f=$('#'+fileInputId).files[0];if(!f){toast('Chọn tệp trước','err');return;}
+  if(f.size>25*1024*1024){toast('Tệp tối đa 25MB','err');return;}
+  const btn=$('#'+btnId);btn.disabled=true;const old=btn.textContent;btn.innerHTML='<span class="spin"></span>';
+  try{
+    const safe=f.name.replace(/[^\w.\-]/g,'_');const path='vb/'+(editId||'new')+'/'+Date.now()+'_'+safe;
+    const {error:ue}=await sb.storage.from('documents').upload(path,f,{upsert:true,contentType:f.type});if(ue)throw ue;
+    const pub=sb.storage.from('documents').getPublicUrl(path).data.publicUrl;
+    $('#'+urlInputId).value=pub;$('#'+linkId).innerHTML=docLinkHtml(pub);$('#'+fileInputId).value='';
+    toast('Đã tải tệp — bấm Lưu để áp dụng','ok');
+  }catch(err){toast('Lỗi tải tệp: '+(err.message||err),'err');}
+  btn.disabled=false;btn.textContent=old||'Tải lên';
+}
+$('#btnDocInUp').onclick=()=>uploadDoc('fDocInFile','fDocInUrl','docInLink','btnDocInUp');
+$('#btnDocOutUp').onclick=()=>uploadDoc('fDocOutFile','fDocOutUrl','docOutLink','btnDocOutUp');
+$('#fDocInUrl').oninput=e=>$('#docInLink').innerHTML=docLinkHtml(e.target.value.trim());
+$('#fDocOutUrl').oninput=e=>$('#docOutLink').innerHTML=docLinkHtml(e.target.value.trim());
 let collabDisabled=false;
 function renderCollabChecks(selected,disabled){
   const sel=new Set(selected);collabDisabled=disabled;
@@ -1750,9 +1876,12 @@ async function saveTask(){
   // nếu không chọn thì giữ nguyên phân loại cũ của việc (không xóa dữ liệu cũ).
   const kc=kpiCatalog.find(k=>String(k.id)===$('#fKpiCat').value);
   const oldCat=editId?(tasks.find(t=>t.id===editId)?.category||null):null;
+  const hasDoc=$('#fHasDoc').checked;
   const obj={title,description:$('#fDesc').value.trim(),team_id:+$('#fTeam').value||null,project_id:+$('#fProject').value||null,category:kc?kc.name:oldCat,
     assignee_id:$('#fAssignee').value||null,leader_id:$('#fLeader').value||null,status:st,priority:$('#fPriority').value,start_date:$('#fStart').value||null,due_date:$('#fDue').value||null,progress:prog,
-    kpi_points:(kpiP===''?null:Math.max(0,Math.min(100,parseInt(kpiP)||0))),kpi_quality:$('#fKpiQuality').value||null,kpi_time:$('#fKpiTime').value||null};
+    kpi_points:(kpiP===''?null:Math.max(0,Math.min(100,parseInt(kpiP)||0))),kpi_quality:$('#fKpiQuality').value||null,kpi_time:$('#fKpiTime').value||null,
+    doc_in_no:hasDoc?($('#fDocInNo').value.trim()||null):null,doc_in_date:hasDoc?($('#fDocInDate').value||null):null,doc_in_summary:hasDoc?($('#fDocInSummary').value.trim()||null):null,doc_in_url:hasDoc?($('#fDocInUrl').value.trim()||null):null,
+    doc_out_no:hasDoc?($('#fDocOutNo').value.trim()||null):null,doc_out_date:hasDoc?($('#fDocOutDate').value||null):null,doc_out_url:hasDoc?($('#fDocOutUrl').value.trim()||null):null};
   $('#tmSave').disabled=true;
   try{
     const wasNew=!editId;let taskId=editId;
@@ -2196,7 +2325,7 @@ function toggleTheme(){const cur=document.documentElement.dataset.theme==='light
 
 /* ================= Thông báo ================= */
 let notifs=[], notifChannel=null;
-const NIC={assigned:'📌',collaborator:'🤝',completed:'✅',comment:'💬',mention:'📣'};
+const NIC={assigned:'📌',collaborator:'🤝',completed:'✅',comment:'💬',mention:'📣',kpi_pending:'📐'};
 function timeAgo(d){const s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return 'vừa xong';if(s<3600)return Math.floor(s/60)+' phút trước';if(s<86400)return Math.floor(s/3600)+' giờ trước';return new Date(d).toLocaleDateString('vi-VN');}
 async function loadNotifs(){
   const {data}=await sb.from('notifications').select('*').order('created_at',{ascending:false}).limit(40);
@@ -2237,7 +2366,7 @@ function requestNotifPerm(){
 
 
 /* ================= Navigation & wiring ================= */
-const TITLES={dashboard:'Tổng quan',kanban:'Bảng Kanban',tasks:'Danh sách nhiệm vụ',teams:'Công việc theo tổ',projects:'Dự án',calendar:'Lịch công việc',kpi:'KPI & Thống kê',report:'Báo cáo tháng',gantt:'Sơ đồ Gantt',staff:'Danh sách nhân sự'};
+const TITLES={dashboard:'Tổng quan',kanban:'Bảng Kanban',tasks:'Danh sách nhiệm vụ',teams:'Công việc theo tổ',projects:'Dự án',calendar:'Lịch công việc',kpi:'KPI & Thống kê',report:'Báo cáo tháng',gantt:'Sơ đồ Gantt',docs:'Sổ văn bản đến/đi',staff:'Danh sách nhân sự'};
 function nav(v){$$('.nav-item[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));$$('.view').forEach(s=>s.classList.remove('active'));$('#view-'+v).classList.add('active');$('#viewTitle').textContent=TITLES[v];$('#sidebar').classList.remove('open');}
 window.nav=nav;
 
