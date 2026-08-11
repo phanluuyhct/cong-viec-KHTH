@@ -116,6 +116,14 @@
   .topbar h2{font-size:17px;margin-right:auto}
   .search{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--txt);width:190px}
   .sel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--txt)}
+  .combo{position:relative;min-width:150px}
+  .field .combo{width:100%}
+  .combo>input{width:100%;padding-right:26px}
+  .combo-panel{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:60;max-height:240px;overflow:auto;background:var(--card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.20);display:none}
+  .combo-item{padding:8px 11px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)}
+  .combo-item:last-child{border-bottom:none}
+  .combo-item:hover,.combo-item.on{background:var(--bg2)}
+  .combo-arrow{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);font-size:11px}
   .content{flex:1;overflow:auto;padding:20px}
   .view{display:none}.view.active{display:block}
 
@@ -232,6 +240,7 @@
     #btnNew{order:4;padding:9px 12px;white-space:nowrap}
     #search{order:5;width:100%}
     .topbar .sel{order:6;flex:1 1 30%;min-width:0;width:auto}
+    .topbar .combo{order:6;flex:1 1 30%;min-width:0}
   }
   .menu-btn{display:none;place-items:center;width:38px;height:38px;background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:18px}
 </style>
@@ -929,6 +938,7 @@ function fillFilters(){
   fm.innerHTML='<option value="">Tất cả người</option>'+members.map(m=>`<option value="${m.id}">${m.full_name}</option>`).join('');
   fp.innerHTML='<option value="">Tất cả dự án</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   ft.value=pv;fm.value=mv;fp.value=ppv;
+  if(window.syncCombos)syncCombos();
 }
 let drillFilter=null; // lọc nhanh khi bấm vào biểu đồ ở Tổng quan
 function filtered(){
@@ -1569,6 +1579,7 @@ function renderGantt(){
   }).join('');
   const legend=isProj?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)">${['todo','doing','review','done','hoan','huy'].map(s=>`<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:${STATUS[s].color};display:inline-block"></i>${STATUS[s].label}</span>`).join('')}</div>`;
   $('#ganttView').innerHTML=header+body+legend;
+  if(window.syncCombos)syncCombos();
 }
 $('#ganttProject')&&($('#ganttProject').onchange=renderGantt);
 $('#ganttStatus')&&($('#ganttStatus').onchange=renderGantt);
@@ -1798,6 +1809,7 @@ async function openTask(id){
   $('#tmSave').style.display=editable?'inline-flex':'none';
   $('#tmDelete').style.display=(t&&canDelete(t))?'inline-flex':'none';
   $('#taskModal').classList.add('show');
+  syncCombos();
   cmtMentions.clear();renderCmtTags();$('#tagPanel').style.display='none';
   if(t){loadSubtasks(id);loadComments(id);loadAttachments(id);subscribeComments(id);}
 }
@@ -2373,6 +2385,41 @@ function requestNotifPerm(){
 const TITLES={dashboard:'Tổng quan',kanban:'Bảng Kanban',tasks:'Danh sách nhiệm vụ',teams:'Công việc theo tổ',projects:'Dự án',calendar:'Lịch công việc',kpi:'KPI & Thống kê',report:'Báo cáo tháng',gantt:'Sơ đồ Gantt',docs:'Sổ văn bản đến/đi',staff:'Danh sách nhân sự'};
 function nav(v){$$('.nav-item[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));$$('.view').forEach(s=>s.classList.remove('active'));$('#view-'+v).classList.add('active');$('#viewTitle').textContent=TITLES[v];$('#sidebar').classList.remove('open');}
 window.nav=nav;
+
+/* ===== Ô chọn có tìm kiếm (gõ từ khóa để lọc danh sách sổ xuống) ===== */
+const _combos=[];
+function comboNorm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function enhanceSelect(sel){
+  if(!sel||sel.dataset.combo)return;sel.dataset.combo='1';
+  const wrap=document.createElement('div');wrap.className='combo';
+  sel.parentNode.insertBefore(wrap,sel);wrap.appendChild(sel);sel.style.display='none';
+  const input=document.createElement('input');input.type='text';input.autocomplete='off';input.spellcheck=false;
+  input.className=sel.className;input.placeholder='Gõ để tìm…';
+  const arrow=document.createElement('span');arrow.className='combo-arrow';arrow.textContent='▾';
+  const panel=document.createElement('div');panel.className='combo-panel';
+  wrap.appendChild(input);wrap.appendChild(arrow);wrap.appendChild(panel);
+  function curText(){const o=sel.selectedOptions[0];return o?o.text:'';}
+  function refresh(){if(document.activeElement!==input)input.value=curText();input.disabled=sel.disabled;wrap.style.opacity=sel.disabled?.6:1;}
+  function build(){
+    const q=comboNorm(input.value);
+    const items=[...sel.options].map((o,i)=>({o,i})).filter(({o})=>!q||comboNorm(o.text).includes(q));
+    panel.innerHTML=items.length?items.map(({o,i})=>`<div class="combo-item ${o.value===sel.value?'on':''}" data-i="${i}">${esc(o.text)}</div>`).join(''):'<div class="combo-item" style="color:var(--muted);cursor:default">Không tìm thấy</div>';
+  }
+  function open(){if(sel.disabled)return;build();panel.style.display='block';}
+  function close(){panel.style.display='none';refresh();}
+  input.addEventListener('focus',()=>{input.value='';open();});
+  input.addEventListener('input',open);
+  input.addEventListener('blur',()=>setTimeout(close,150));
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'){const first=panel.querySelector('.combo-item[data-i]');if(first){e.preventDefault();pick(+first.dataset.i);}}else if(e.key==='Escape'){input.blur();}});
+  function pick(i){sel.selectedIndex=i;sel.dispatchEvent(new Event('change',{bubbles:true}));panel.style.display='none';input.value=curText();input.blur();}
+  panel.addEventListener('mousedown',e=>{const it=e.target.closest('.combo-item[data-i]');if(!it)return;e.preventDefault();pick(+it.dataset.i);});
+  // Khi danh sách được nạp lại (đổi dữ liệu) thì cập nhật hiển thị
+  new MutationObserver(()=>refresh()).observe(sel,{childList:true});
+  sel._comboRefresh=refresh;_combos.push(sel);refresh();
+}
+function syncCombos(){_combos.forEach(s=>s._comboRefresh&&s._comboRefresh());}
+window.syncCombos=syncCombos;
+['filterTeam','filterMember','filterProject','fTeam','fProject','fAssignee','fLeader','fKpiCat','ganttProject'].forEach(id=>{const el=$('#'+id);if(el)enhanceSelect(el);});
 
 $$('.nav-item[data-view]').forEach(b=>b.onclick=()=>nav(b.dataset.view));
 $('#menuBtn').onclick=()=>$('#sidebar').classList.toggle('open');
