@@ -1566,7 +1566,7 @@ function renderGantt(){
   else if(sortMode==='prio')rows0.sort((a,b)=>(prioRank[a.prio]??1)-(prioRank[b.prio]??1)||a.e-b.e);
   else rows0.sort((a,b)=>a.s-b.s);
   const iso=ms=>new Date(ms).toISOString().slice(0,10);
-  const LABELW=190, GAP=8;
+  const LABELW=380, GAP=8;
   const pctOf=ms=>Math.max(0,Math.min(100,(ms-min)/span*100));
   const months=[]; let md=new Date(min); md=new Date(md.getFullYear(),md.getMonth(),1);
   while(md.getTime()<=max){months.push(new Date(md));md=new Date(md.getFullYear(),md.getMonth()+1,1);}
