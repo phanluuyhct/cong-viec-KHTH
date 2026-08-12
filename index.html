@@ -401,6 +401,7 @@
           <div class="legend" style="margin:0"><span>Sơ đồ Gantt theo thời gian (ngày bắt đầu → hạn chót). Bấm thanh để mở nhiệm vụ.</span></div>
           <select class="sel" id="ganttRange" style="margin-left:auto"></select>
           <select class="sel" id="ganttStatus"><option value="">Tất cả tình trạng</option><option value="todo">Cần làm</option><option value="doing">Đang làm</option><option value="review">Đang duyệt</option><option value="done">Hoàn thành</option><option value="hoan">Hoãn</option><option value="huy">Hủy</option></select>
+          <select class="sel" id="ganttSort"><option value="due_asc">↑ Hạn chót: gần → xa</option><option value="due_desc">↓ Hạn chót: xa → gần</option><option value="prio">⚑ Ưu tiên: cao → thấp</option><option value="start_asc">Ngày bắt đầu: sớm → muộn</option></select>
           <select class="sel" id="ganttProject"><option value="">Tất cả nhiệm vụ</option></select>
         </div>
         <div class="card" style="overflow:auto" id="ganttView"></div>
@@ -1545,11 +1546,11 @@ function renderGantt(){
   const inPeriod=r=>!period||(r.s.getTime()<=period.e&&r.e.getTime()>=period.s); // việc chồng lấn kỳ đã chọn
   let rows0;
   if(isProj){
-    rows0=projects.map(p=>{const {s,e}=projRange(p);if(!s&&!e)return null;return {label:p.name,s:new Date(s),e:new Date(e),color:p.color||'#3b82f6',click:`openProject(${p.id})`,od:false};}).filter(Boolean).filter(inPeriod);
+    rows0=projects.map(p=>{const {s,e}=projRange(p);if(!s&&!e)return null;return {label:p.name,s:new Date(s),e:new Date(e),color:p.color||'#3b82f6',click:`openProject(${p.id})`,od:false,prio:'trung'};}).filter(Boolean).filter(inPeriod);
     if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Không có dự án nào trong kỳ đã chọn.<br>Thử đổi “kỳ thời gian” sang Toàn bộ, hoặc điền ngày cho dự án.</div>';return;}
   }else{
     // Áp dụng bộ lọc chung (tổ / người / dự án / tìm kiếm) + lọc theo dự án của Gantt + lọc theo tình trạng + lọc theo kỳ
-    rows0=filtered().filter(t=>(!pid||String(t.project_id)===pid)&&(!gstatus||t.status===gstatus)).map(t=>{const s=t.start_date||t.due_date,e=t.due_date||t.start_date;if(!s&&!e)return null;return {label:t.title,s:new Date(s),e:new Date(e),color:STATUS[t.status].color,click:`openTask(${t.id})`,od:isOverdue(t)};}).filter(Boolean).filter(inPeriod);
+    rows0=filtered().filter(t=>(!pid||String(t.project_id)===pid)&&(!gstatus||t.status===gstatus)).map(t=>{const s=t.start_date||t.due_date,e=t.due_date||t.start_date;if(!s&&!e)return null;return {label:t.title,s:new Date(s),e:new Date(e),color:STATUS[t.status].color,click:`openTask(${t.id})`,od:isOverdue(t),prio:t.priority||'trung'};}).filter(Boolean).filter(inPeriod);
     if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Không có nhiệm vụ nào trong kỳ đã chọn (và khớp bộ lọc).<br>Thử đổi “kỳ thời gian” sang Toàn bộ, hoặc bỏ bớt bộ lọc.</div>';return;}
   }
   // Trục thời gian: nếu chọn kỳ thì căn theo kỳ (tránh 1 việc dài kéo giãn cả biểu đồ); nếu Toàn bộ thì theo dữ liệu
@@ -1558,7 +1559,12 @@ function renderGantt(){
   else{min=Math.min(...rows0.map(x=>x.s.getTime()));max=Math.max(...rows0.map(x=>x.e.getTime()));}
   if(max<=min)max=min+86400000;
   const span=max-min;
-  rows0.sort((a,b)=>a.s-b.s);
+  const sortMode=($('#ganttSort')&&$('#ganttSort').value)||'due_asc';
+  const prioRank={cao:0,trung:1,thap:2};
+  if(sortMode==='due_asc')rows0.sort((a,b)=>a.e-b.e||a.s-b.s);
+  else if(sortMode==='due_desc')rows0.sort((a,b)=>b.e-a.e||b.s-a.s);
+  else if(sortMode==='prio')rows0.sort((a,b)=>(prioRank[a.prio]??1)-(prioRank[b.prio]??1)||a.e-b.e);
+  else rows0.sort((a,b)=>a.s-b.s);
   const iso=ms=>new Date(ms).toISOString().slice(0,10);
   const LABELW=190, GAP=8;
   const pctOf=ms=>Math.max(0,Math.min(100,(ms-min)/span*100));
@@ -1583,6 +1589,7 @@ function renderGantt(){
 }
 $('#ganttProject')&&($('#ganttProject').onchange=renderGantt);
 $('#ganttStatus')&&($('#ganttStatus').onchange=renderGantt);
+$('#ganttSort')&&($('#ganttSort').onchange=renderGantt);
 $('#ganttRange')&&($('#ganttRange').onchange=renderGantt);
 /* ================= Sổ văn bản đến/đi ================= */
 function fmtDMY(d){if(!d)return '—';const x=new Date(d);return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();}
