@@ -386,6 +386,15 @@
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Việc (điểm giao)</th><th>Điểm đạt (tuyệt đối)</th><th>A</th><th>B</th><th>C</th><th>D</th><th>KPI</th><th>Xếp nhóm</th></tr></thead><tbody id="kpiHdBody"></tbody></table></div>
         <div class="section-title">⚖️ Cân đối khối lượng (việc chưa hoàn thành)</div>
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Chưa xong</th><th>Đang làm</th><th>Quá hạn</th><th>Đánh giá</th></tr></thead><tbody id="kpiWorkloadBody"></tbody></table></div>
+        <div id="kpiReviewWrap" style="display:none">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
+            <div class="section-title" style="margin:0">📋 Bảng xếp loại (lãnh đạo chốt để đính kèm biên bản)</div>
+            <button class="btn primary" id="btnSaveReview" style="margin-left:auto">💾 Lưu xếp loại</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted2);margin:2px 0 6px">Hệ thống gợi ý nhóm theo KPI. Lãnh đạo đọc kèm điểm tuyệt đối &amp; khối lượng để <b>chốt nhóm cuối cùng</b>; nếu khác gợi ý thì ghi <b>lý do điều chỉnh</b> (Mục 5.1). Kết luận này sẽ vào file báo cáo xuất ra.</div>
+          <div id="kpiReviewNote" style="font-size:12.5px;color:var(--amber);margin-bottom:6px"></div>
+          <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>KPI%</th><th>Điểm đạt (tuyệt đối)</th><th>Khối lượng (chưa xong/quá hạn)</th><th>Nhóm hệ thống</th><th>Nhóm chốt</th><th>Lý do điều chỉnh</th></tr></thead><tbody id="kpiReviewBody"></tbody></table></div>
+        </div>
         <div class="section-title">🏆 KPI cá nhân</div>
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Thành viên</th><th>Tổng NV</th><th>Hoàn thành</th><th>Đúng hạn</th><th>Trễ hạn</th><th>Tỉ lệ</th><th>Điểm KPI</th></tr></thead><tbody id="kpiBody"></tbody></table></div>
         <div class="section-title">🏥 KPI theo tổ</div>
@@ -768,7 +777,7 @@ const EMBED_URL='https://ljkfxhdcmfngdtditeyy.supabase.co';
 const EMBED_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqa2Z4aGRjbWZuZ2R0ZGl0ZXl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODk3NzEsImV4cCI6MjEwMDc2NTc3MX0.Qbgy-VrVG5GIz_70w4AJMY9uCVEt8s2LTjmkrqTAEYU';
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 let sb=null, session=null, me=null;
-let teams=[], members=[], tasks=[], memberTeams=[], projects=[], taskCollabs=[], reports=[], projectTeams=[], kpiCatalog=[], plans=[];
+let teams=[], members=[], tasks=[], memberTeams=[], projects=[], taskCollabs=[], reports=[], projectTeams=[], kpiCatalog=[], plans=[], kpiReviews=[];
 let editId=null, cmtChannel=null, taskChannel=null, editProjId=null;
 const AV=['#3b82f6','#31c48d','#f5a524','#a878ff','#33c9dc','#f2506e','#ff8c42','#4dd0a0','#9b6dff','#ff6b9d'];
 
@@ -945,7 +954,7 @@ async function loadMe(){
   loadNotifs();subscribeNotifs();requestNotifPerm();
 }
 async function loadData(){
-  const [tRes,mRes,kRes,mtRes,pRes,tcRes,rRes,ptRes,kcRes,plRes]=await Promise.all([
+  const [tRes,mRes,kRes,mtRes,pRes,tcRes,rRes,ptRes,kcRes,plRes,rvRes]=await Promise.all([
     sb.from('teams').select('*').order('sort_order'),
     sb.from('profiles').select('*').order('full_name'),
     sb.from('tasks').select('*').order('due_date',{nullsFirst:false}),
@@ -955,15 +964,17 @@ async function loadData(){
     sb.from('monthly_reports').select('*'),
     sb.from('project_teams').select('*'),
     sb.from('kpi_catalog').select('*').order('sort_order'),
-    sb.from('plans').select('*').order('sort_order')
+    sb.from('plans').select('*').order('sort_order'),
+    sb.from('kpi_reviews').select('*')
   ]);
-  teams=tRes.data||[];members=mRes.data||[];tasks=kRes.data||[];memberTeams=mtRes.data||[];projects=pRes.data||[];taskCollabs=tcRes.data||[];reports=rRes.data||[];projectTeams=ptRes.data||[];kpiCatalog=kcRes.data||[];plans=(plRes.data)||[];
+  teams=tRes.data||[];members=mRes.data||[];tasks=kRes.data||[];memberTeams=mtRes.data||[];projects=pRes.data||[];taskCollabs=tcRes.data||[];reports=rRes.data||[];projectTeams=ptRes.data||[];kpiCatalog=kcRes.data||[];plans=(plRes.data)||[];kpiReviews=(rvRes&&rvRes.data)||[];
   if(me){me.teamIds=teamIdsOf(me.id);me.leadIds=leadIdsOf(me.id);}
 }
 function projTeamIds(pid){return projectTeams.filter(x=>x.project_id===pid).map(x=>x.team_id);}
 async function reloadProjectsData(){const [p,pt]=await Promise.all([sb.from('projects').select('*').order('created_at'),sb.from('project_teams').select('*')]);projects=p.data||[];projectTeams=pt.data||[];}
 async function reloadReports(){const {data}=await sb.from('monthly_reports').select('*');reports=data||[];}
 async function reloadPlans(){const {data}=await sb.from('plans').select('*').order('sort_order');plans=data||[];}
+async function reloadKpiReviews(){const {data}=await sb.from('kpi_reviews').select('*');kpiReviews=data||[];}
 async function reloadTasks(){
   const [k,tc]=await Promise.all([sb.from('tasks').select('*').order('due_date',{nullsFirst:false}),sb.from('task_collaborators').select('*')]);
   tasks=k.data||[];taskCollabs=tc.data||[];renderAll();
@@ -1157,6 +1168,7 @@ function renderKPI(){
   // KPI theo Hướng dẫn 20 (dùng đúng kỳ đã lọc ở trên)
   $('#btnKpiCatalog').classList.toggle('hidden',!canManageTask());
   renderKpiHD20(pool);
+  renderKpiReview();
   // Nhắc: việc chưa đánh giá KPI (chưa gán điểm / xong chưa chấm) trong kỳ
   const needPoint=pool.filter(t=>kpiMissReason(t)==='point').length;
   const needEval=pool.filter(t=>kpiMissReason(t)==='eval').length;
@@ -1233,6 +1245,21 @@ function kpiReportTables(){
     'Thành viên':r.m.full_name,'Tổng NV':r.total,'Hoàn thành':r.done,'Đúng hạn':r.onTime,'Trễ hạn':r.overdue,'Tỉ lệ (%)':r.rate,'Điểm KPI':r.score}));
   const to=teams.map(tm=>{const tt=pool.filter(x=>x.team_id===tm.id),td=tt.filter(x=>x.status==='done').length;
     return {'Tổ':tm.name,'Số việc':tt.length,'Hoàn thành':td,'Tỉ lệ HT (%)':tt.length?Math.round(td/tt.length*100):0};}).filter(r=>r['Số việc']>0);
+  // Cân đối khối lượng (việc chưa hoàn thành)
+  const ACTIVE=['todo','doing','review'];
+  const wlAll=members.map(m=>{const mt=pool.filter(t=>t.assignee_id===m.id||collabIdsOf(t.id).includes(m.id));
+    return {m,active:mt.filter(t=>ACTIVE.includes(t.status)).length,doing:mt.filter(t=>t.status==='doing').length,overdue:mt.filter(isOverdue).length};}).filter(r=>r.active>0);
+  const avgA=wlAll.length?wlAll.reduce((a,b)=>a+b.active,0)/wlAll.length:0;
+  const hi=Math.max(5,Math.ceil(avgA*1.5)),lo=Math.max(1,Math.floor(avgA*0.5));
+  const wl=wlAll.sort((a,b)=>b.active-a.active).map(r=>({'Cán bộ':r.m.full_name,'Chưa xong':r.active,'Đang làm':r.doing,'Quá hạn':r.overdue,
+    'Nhận xét':(r.overdue>=3||r.active>=hi)?'Quá tải':(r.active<=lo?'Ít việc':'Vừa phải')}));
+  // Kết luận xếp loại (chốt) — chỉ khi chọn một tháng cụ thể
+  const scoped=$('#kpiMonth')?.value||'';
+  const rv=scoped?computeKpiHD20(pool).filter(r=>r.total>0).sort((a,b)=>b.kpi-a.kpi).map(r=>{
+    const review=(typeof reviewFor==='function')?reviewFor(scoped,r.m.id):null;
+    const sys=GROUPS[sysGroupCode(r.kpi)];
+    return {'Cán bộ':r.m.full_name,'KPI%':r.kpi,'Điểm đạt (tuyệt đối)':Math.round(r.donePts||0),'Nhóm hệ thống':sys,'Nhóm chốt':review?GROUPS[review.final_group]:sys,'Lý do điều chỉnh':review?.reason||''};
+  }):[];
   const hdAvg=hd.length?Math.round(hd.reduce((a,b)=>a+b.KPI,0)/hd.length):0;
   const sum=[{'Chỉ tiêu':'KPI trung bình phòng (HD20)','Giá trị':hdAvg},
     {'Chỉ tiêu':'Số cán bộ có điểm KPI','Giá trị':hd.length},
@@ -1241,7 +1268,7 @@ function kpiReportTables(){
     {'Chỉ tiêu':'Xếp loại Tốt (≥70)','Giá trị':hd.filter(r=>r.KPI>=70).length},
     {'Chỉ tiêu':'Xếp loại Đạt (50–69)','Giá trị':hd.filter(r=>r.KPI>=50&&r.KPI<70).length},
     {'Chỉ tiêu':'Chưa đạt (<50)','Giá trị':hd.filter(r=>r.KPI<50).length}];
-  return {hd,ca,to,sum};
+  return {hd,ca,to,wl,rv,sum};
 }
 function exportKpiExcel(){
   if(typeof XLSX==='undefined'){toast('Thư viện Excel chưa tải xong, vui lòng thử lại','err');return;}
@@ -1250,6 +1277,8 @@ function exportKpiExcel(){
   const add=(name,rows)=>{const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{'Ghi chú':'(Không có dữ liệu trong kỳ)'}]);XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));};
   add('Tổng hợp',[{'Báo cáo':'KPI Phòng KHTH — BV 30-4'},{'Kỳ':label},{'Xuất ngày':fmtDMY(todayStr())},{}].concat(T.sum));
   add('KPI HD20 (cá nhân)',T.hd);
+  if(scoped)add('Kết luận xếp loại',T.rv);
+  add('Cân đối khối lượng',T.wl);
   add('KPI cá nhân (tỉ lệ)',T.ca);
   add('KPI theo tổ',T.to);
   XLSX.writeFile(wb,'BaoCao_KPI_KHTH_'+(scoped||'toanbo')+'.xlsx');
@@ -1272,16 +1301,84 @@ function exportKpiWord(){
     +'<p><i>Kỳ đánh giá: '+esc(label)+' · Xuất ngày: '+fmtDMY(todayStr())+'</i></p>'
     +_tbl('I. Tổng hợp chung',T.sum)
     +_tbl('II. KPI cá nhân theo Hướng dẫn 20 (A·B·C·D)',T.hd)
-    +_tbl('III. KPI cá nhân (tỉ lệ hoàn thành)',T.ca)
-    +_tbl('IV. KPI theo tổ',T.to)
+    +_tbl('III. Cân đối khối lượng (việc chưa hoàn thành)',T.wl)
+    +_tbl('IV. KPI cá nhân (tỉ lệ hoàn thành)',T.ca)
+    +_tbl('V. KPI theo tổ',T.to)
     +'<p style="margin-top:16px;font-size:11pt"><i>Ghi chú: KPI% là tỉ lệ đạt/giao, không phản ánh khối lượng &amp; độ khó; cột "Điểm đạt (tuyệt đối)" phản ánh khối lượng thực. Khi phân nhóm cần đọc cả hai (Mục 5.1 Hướng dẫn 20).</i></p>'
-    +'<br/><table style="width:100%;font-weight:bold"><tr><td style="text-align:center">NGƯỜI LẬP BÁO CÁO</td><td style="text-align:center">TRƯỞNG PHÒNG</td></tr></table>'
+    +(scoped?('<h2 style="text-align:center;margin-top:22px">KẾT LUẬN XẾP LOẠI</h2>'
+        +_tbl('VI. Kết luận xếp loại kỳ '+esc(label)+' (nhóm chốt do lãnh đạo phòng quyết)',T.rv)
+        +'<p style="font-size:11pt"><i>Nhóm chốt là kết luận của lãnh đạo và tập thể phòng; trường hợp khác gợi ý của hệ thống đã nêu rõ lý do điều chỉnh theo Mục 5.1.</i></p>')
+      :'<p style="margin-top:16px"><i>Chọn một tháng cụ thể để in Kết luận xếp loại kèm biên bản.</i></p>')
+    +'<br/><table style="width:100%;font-weight:bold"><tr><td style="text-align:center;width:50%">NGƯỜI LẬP BÁO CÁO<br/><br/><br/></td><td style="text-align:center;width:50%">TRƯỞNG PHÒNG<br/><br/><br/></td></tr></table>'
     +'</body></html>';
   const blob=new Blob(['﻿'+html],{type:'application/msword'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='BaoCao_KPI_KHTH_'+(scoped||'toanbo')+'.doc';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast('Đã xuất Word','ok');
 }
 window.exportKpiExcel=exportKpiExcel;window.exportKpiWord=exportKpiWord;
+
+/* ===== Bảng xếp loại (lãnh đạo chốt nhóm + lý do) ===== */
+const GROUPS={tot:'Tốt',dat:'Đạt',chuadat:'Chưa đạt'};
+function sysGroupCode(kpi){return kpi>=70?'tot':kpi>=50?'dat':'chuadat';}
+function reviewFor(period,mid){return kpiReviews.find(r=>r.period===period&&r.member_id===mid);}
+function kpiReviewRows(){
+  const pool=kpiPool();
+  const hd=computeKpiHD20(pool).filter(r=>r.total>0).sort((a,b)=>b.kpi-a.kpi);
+  return hd.map(r=>{
+    const mt=pool.filter(t=>t.assignee_id===r.m.id||collabIdsOf(t.id).includes(r.m.id));
+    const active=mt.filter(t=>['todo','doing','review'].includes(t.status)).length;
+    const overdue=mt.filter(isOverdue).length;
+    const sys=sysGroupCode(r.kpi);
+    return {m:r.m,kpi:r.kpi,donePts:Math.round(r.donePts||0),active,overdue,sys};
+  });
+}
+function renderKpiReview(){
+  const wrap=$('#kpiReviewWrap');if(!wrap)return;
+  const isMgr=canManageTask();
+  wrap.style.display=isMgr?'':'none';
+  if(!isMgr)return;
+  const period=$('#kpiMonth')?.value||'';
+  const note=$('#kpiReviewNote');
+  if(!period){note.textContent='⚠️ Chọn một tháng cụ thể ở trên để chốt xếp loại (đang ở “Tất cả thời gian”).';$('#kpiReviewBody').innerHTML='';$('#btnSaveReview').disabled=true;return;}
+  note.textContent='Kỳ chốt: '+ymLabel(period);$('#btnSaveReview').disabled=false;
+  const rows=kpiReviewRows();
+  $('#kpiReviewBody').innerHTML=rows.map(r=>{
+    const rv=reviewFor(period,r.m.id);
+    const cur=rv?.final_group||r.sys;
+    const opts=Object.entries(GROUPS).map(([k,l])=>`<option value="${k}" ${k===cur?'selected':''}>${l}</option>`).join('');
+    const g=kpiGroup(r.kpi);
+    return `<tr>
+      <td class="tc">${ava(r.m)} ${esc(r.m.full_name)}</td>
+      <td><b style="color:${g.c}">${r.kpi}</b></td>
+      <td>${r.donePts}đ</td>
+      <td>${r.active}${r.overdue?` · <span style="color:var(--red)">${r.overdue} quá hạn</span>`:''}</td>
+      <td><span class="chip" style="background:${g.c};color:#fff;font-size:11px">${g.l}</span></td>
+      <td><select class="sel krGroup" data-m="${r.m.id}" style="padding:5px 8px">${opts}</select></td>
+      <td><input class="krReason" data-m="${r.m.id}" value="${esc(rv?.reason||'')}" placeholder="Lý do nếu khác gợi ý…" style="width:100%;min-width:160px;padding:6px 8px;border:1px solid var(--line2);border-radius:8px;background:var(--bg2)"></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="7" class="empty">Chưa có cán bộ nào có điểm KPI trong kỳ này.</td></tr>';
+}
+async function saveKpiReview(){
+  const period=$('#kpiMonth')?.value||'';
+  if(!period){toast('Chọn một tháng cụ thể để chốt xếp loại','err');return;}
+  const rowsData=kpiReviewRows();
+  const snap={};rowsData.forEach(r=>snap[r.m.id]=r.kpi);
+  const recs=[...$$('.krGroup')].map(sel=>{
+    const mid=sel.dataset.m;
+    const reason=($(`.krReason[data-m="${mid}"]`)?.value||'').trim();
+    return {period,member_id:mid,final_group:sel.value,reason:reason||null,kpi_snapshot:snap[mid]??null,reviewed_by:me.id,reviewed_at:new Date().toISOString()};
+  });
+  if(!recs.length){toast('Không có dòng nào để lưu','err');return;}
+  $('#btnSaveReview').disabled=true;
+  try{
+    const {error}=await sb.from('kpi_reviews').upsert(recs,{onConflict:'period,member_id'});
+    if(error)throw error;
+    await reloadKpiReviews();renderKpiReview();
+    toast('Đã lưu xếp loại kỳ '+ymLabel(period),'ok');
+  }catch(err){toast('Lỗi lưu: '+(err.message||err),'err');}
+  $('#btnSaveReview').disabled=false;
+}
+window.renderKpiReview=renderKpiReview;
 
 function renderDashboard(){
   const done=tasks.filter(t=>t.status==='done').length;
@@ -2711,6 +2808,7 @@ $('#btnNew').onclick=()=>openTask(null);
 $('#search').oninput=()=>{renderKanban();renderTasks();renderTeams();renderCalendar();renderGantt();};
 $('#filterTeam').onchange=$('#filterMember').onchange=$('#filterProject').onchange=renderAll;
 $('#kpiMonth')&&($('#kpiMonth').onchange=renderKPI);
+$('#btnSaveReview')&&($('#btnSaveReview').onclick=saveKpiReview);
 $('#btnKpiExcel')&&($('#btnKpiExcel').onclick=exportKpiExcel);
 $('#btnKpiWord')&&($('#btnKpiWord').onclick=exportKpiWord);
 $('#btnNewProject').onclick=()=>openProject(null);
