@@ -13,6 +13,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <script>document.documentElement.dataset.theme=localStorage.getItem('khth_theme')||'light';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#0f1420;--bg2:#151c2c;--card:#1b2436;--card2:#212c42;
@@ -292,6 +293,7 @@
     <button class="nav-item" data-view="tasks"><span class="ic">✅</span> Nhiệm vụ</button>
     <button class="nav-item" data-view="teams"><span class="ic">🏥</span> Theo tổ</button>
     <button class="nav-item" data-view="projects"><span class="ic">📁</span> Dự án</button>
+    <button class="nav-item" data-view="plans"><span class="ic">🎯</span> Kế hoạch & Chỉ tiêu</button>
     <button class="nav-item" data-view="calendar"><span class="ic">📅</span> Lịch</button>
     <button class="nav-item" data-view="kpi"><span class="ic">📈</span> KPI & Thống kê</button>
     <button class="nav-item" data-view="report"><span class="ic">📝</span> Báo cáo tháng <span id="reportNavDot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--red)"></span></button>
@@ -369,6 +371,8 @@
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <div class="section-title" style="margin:0">📊 Thống kê theo kỳ</div>
           <select class="sel" id="kpiMonth" style="margin-left:auto;max-width:230px"></select>
+          <button class="btn" id="btnKpiExcel" title="Xuất báo cáo KPI ra Excel">⬇️ Excel</button>
+          <button class="btn" id="btnKpiWord" title="Xuất báo cáo KPI ra Word">⬇️ Word</button>
         </div>
         <div class="grid stat-row" id="kpiStats"></div>
         <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:16px" id="kpiCharts"></div>
@@ -377,8 +381,9 @@
           <button class="btn hidden" id="btnKpiCatalog" style="margin-left:auto">⚙️ Danh mục điểm</button>
         </div>
         <div style="font-size:12px;color:var(--muted);margin:2px 0 6px">A = số lượng, B = chất lượng, C = tiến độ. KPI = (A+B+C)/3×100 (lãnh đạo +D/4). Nhóm: ≥70 tốt · 50–&lt;70 đạt · &lt;50 chưa đạt. Tính theo kỳ đã chọn ở trên. Việc nhiều người: người chính 70% điểm, nhóm phối hợp chia đều 30%.</div>
+        <div style="font-size:12px;color:var(--muted2);background:var(--bg2);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;margin:2px 0 6px">⚖️ <b>Đọc cả hai con số khi phân nhóm (Mục 5.1 HD20):</b> cột <b>KPI%</b> là tỉ lệ đạt/giao — không phản ánh khối lượng &amp; độ khó; cột <b>Điểm đạt (tuyệt đối)</b> là tổng điểm việc đã hoàn thành. Người gánh nhiều việc khó (điểm đạt cao) tuy KPI% có thể thấp hơn vẫn có thể được lãnh đạo xếp nhóm cao hơn. KPI% chỉ là căn cứ, không phải phán quyết cuối cùng.</div>
         <div id="kpiNeedWarn" style="display:none;margin:2px 0 8px"></div>
-        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Việc (điểm giao)</th><th>A</th><th>B</th><th>C</th><th>D</th><th>KPI</th><th>Xếp nhóm</th></tr></thead><tbody id="kpiHdBody"></tbody></table></div>
+        <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Việc (điểm giao)</th><th>Điểm đạt (tuyệt đối)</th><th>A</th><th>B</th><th>C</th><th>D</th><th>KPI</th><th>Xếp nhóm</th></tr></thead><tbody id="kpiHdBody"></tbody></table></div>
         <div class="section-title">⚖️ Cân đối khối lượng (việc chưa hoàn thành)</div>
         <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Cán bộ</th><th>Chưa xong</th><th>Đang làm</th><th>Quá hạn</th><th>Đánh giá</th></tr></thead><tbody id="kpiWorkloadBody"></tbody></table></div>
         <div class="section-title">🏆 KPI cá nhân</div>
@@ -410,6 +415,18 @@
         <div class="cal-head"><button class="btn" id="calPrev">‹</button><h3 id="calLabel" style="min-width:150px;text-align:center"></h3><button class="btn" id="calNext">›</button><button class="btn" id="calToday">Hôm nay</button></div>
         <div class="cal-grid" id="calGrid"></div>
       </section>
+      <section class="view" id="view-plans">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="legend" style="margin:0"><span>Kế hoạch & chỉ tiêu năm của Bệnh viện, Phòng và cá nhân (năm/tháng/tuần). Gắn nhiệm vụ để theo dõi và đôn đốc.</span></div>
+          <select class="sel" id="planYear" style="margin-left:auto"></select>
+          <select class="sel" id="planLevel"><option value="">Tất cả cấp</option><option value="bv">🏥 Bệnh viện</option><option value="phong">🏢 Phòng KHTH</option><option value="canhan">👤 Cá nhân</option></select>
+          <select class="sel" id="planPeriod"><option value="">Tất cả kỳ</option><option value="nam">Năm</option><option value="quy">Quý</option><option value="thang">Tháng</option><option value="tuan">Tuần</option></select>
+          <select class="sel" id="planOwner"><option value="">Tất cả người</option></select>
+          <button class="btn primary" id="btnNewPlan">＋ Thêm chỉ tiêu/kế hoạch</button>
+        </div>
+        <div id="planNudge" style="margin-bottom:10px"></div>
+        <div id="plansView"></div>
+      </section>
       <section class="view" id="view-docs">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
           <div class="legend" style="margin:0"><span>Theo dõi văn bản đến và văn bản trả lời — gắn với từng nhiệm vụ. Bấm dòng để mở nhiệm vụ.</span></div>
@@ -439,6 +456,7 @@
         <div class="field"><label>Dự án</label><select id="fProject"></select></div>
         <div class="field"><label>Chịu trách nhiệm chính</label><select id="fAssignee"></select></div>
       </div>
+      <div class="field"><label>Thuộc kế hoạch / chỉ tiêu</label><select id="fPlan"></select></div>
       <div class="field"><label>Người phối hợp (chọn nhiều)</label>
         <div id="collabDropdown" style="position:relative">
           <div id="collabControl" onclick="toggleCollabPanel()" style="border:1px solid var(--line2);border-radius:10px;padding:9px 12px;background:var(--bg2);cursor:pointer;min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -691,6 +709,40 @@
   </div>
 </div>
 
+<div class="overlay" id="planModal">
+  <div class="modal sm">
+    <div class="modal-h"><h3 id="plmTitle">Thêm chỉ tiêu / kế hoạch</h3><button class="x" id="plmClose">✕</button></div>
+    <div class="modal-b">
+      <div class="field"><label>Tên chỉ tiêu / kế hoạch</label><input id="plTitle" placeholder="VD: Hoàn thành 12 báo cáo định kỳ / Đạt 95% hồ sơ BAĐT"></div>
+      <div class="two">
+        <div class="field"><label>Cấp</label><select id="plLevel"><option value="bv">🏥 Bệnh viện</option><option value="phong">🏢 Phòng KHTH</option><option value="canhan">👤 Cá nhân</option></select></div>
+        <div class="field"><label>Kỳ</label><select id="plPeriod"><option value="nam">Năm</option><option value="quy">Quý</option><option value="thang">Tháng</option><option value="tuan">Tuần</option></select></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Năm</label><input type="number" id="plYear" min="2020" max="2100"></div>
+        <div class="field" id="plQuarterWrap"><label>Quý</label><select id="plQuarter"><option value="1">Quý 1</option><option value="2">Quý 2</option><option value="3">Quý 3</option><option value="4">Quý 4</option></select></div>
+        <div class="field" id="plMonthWrap"><label>Tháng</label><input type="number" id="plMonth" min="1" max="12"></div>
+        <div class="field" id="plWeekWrap"><label>Tuần (trong năm)</label><input type="number" id="plWeek" min="1" max="53"></div>
+      </div>
+      <div class="field"><label>Cán bộ phụ trách (cấp cá nhân)</label><select id="plOwner"></select></div>
+      <div class="field"><label>Thuộc chỉ tiêu cấp trên (liên kết)</label><select id="plParent"></select></div>
+      <div class="field"><label>Cách tính tiến độ</label><select id="plMode"><option value="auto">Tự tính từ nhiệm vụ gắn vào</option><option value="manual">Nhập tay số liệu đạt</option></select></div>
+      <div class="three">
+        <div class="field"><label>Đơn vị tính</label><input id="plUnit" placeholder="báo cáo, %, hồ sơ, lượt…"></div>
+        <div class="field"><label>Số giao (chỉ tiêu)</label><input type="number" id="plTarget" step="any"></div>
+        <div class="field" id="plAchievedWrap"><label>Số đã đạt</label><input type="number" id="plAchieved" step="any"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Nguồn / số văn bản</label><input id="plSource" placeholder="VD: KH số 123/KH-BV"></div>
+        <div class="field"><label>Hạn hoàn thành</label><input type="date" id="plDue"></div>
+      </div>
+      <div class="field"><label>Trạng thái</label><select id="plStatus"><option value="active">Đang thực hiện</option><option value="paused">Tạm dừng</option><option value="done">Hoàn thành</option></select></div>
+      <div class="field"><label>Ghi chú</label><textarea id="plNote" placeholder="Diễn giải chỉ tiêu, cách đo…"></textarea></div>
+    </div>
+    <div class="modal-f"><button class="btn danger" id="plmDelete" style="margin-right:auto">🗑 Xóa</button><button class="btn ghost" id="plmCancel">Hủy</button><button class="btn primary" id="plmSave">Lưu</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="teamModal">
   <div class="modal sm">
     <div class="modal-h"><h3 id="tmoTitle">Tổ mới</h3><button class="x" id="tmoClose">✕</button></div>
@@ -716,7 +768,7 @@ const EMBED_URL='https://ljkfxhdcmfngdtditeyy.supabase.co';
 const EMBED_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxqa2Z4aGRjbWZuZ2R0ZGl0ZXl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODk3NzEsImV4cCI6MjEwMDc2NTc3MX0.Qbgy-VrVG5GIz_70w4AJMY9uCVEt8s2LTjmkrqTAEYU';
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 let sb=null, session=null, me=null;
-let teams=[], members=[], tasks=[], memberTeams=[], projects=[], taskCollabs=[], reports=[], projectTeams=[], kpiCatalog=[];
+let teams=[], members=[], tasks=[], memberTeams=[], projects=[], taskCollabs=[], reports=[], projectTeams=[], kpiCatalog=[], plans=[];
 let editId=null, cmtChannel=null, taskChannel=null, editProjId=null;
 const AV=['#3b82f6','#31c48d','#f5a524','#a878ff','#33c9dc','#f2506e','#ff8c42','#4dd0a0','#9b6dff','#ff6b9d'];
 
@@ -893,7 +945,7 @@ async function loadMe(){
   loadNotifs();subscribeNotifs();requestNotifPerm();
 }
 async function loadData(){
-  const [tRes,mRes,kRes,mtRes,pRes,tcRes,rRes,ptRes,kcRes]=await Promise.all([
+  const [tRes,mRes,kRes,mtRes,pRes,tcRes,rRes,ptRes,kcRes,plRes]=await Promise.all([
     sb.from('teams').select('*').order('sort_order'),
     sb.from('profiles').select('*').order('full_name'),
     sb.from('tasks').select('*').order('due_date',{nullsFirst:false}),
@@ -902,14 +954,16 @@ async function loadData(){
     sb.from('task_collaborators').select('*'),
     sb.from('monthly_reports').select('*'),
     sb.from('project_teams').select('*'),
-    sb.from('kpi_catalog').select('*').order('sort_order')
+    sb.from('kpi_catalog').select('*').order('sort_order'),
+    sb.from('plans').select('*').order('sort_order')
   ]);
-  teams=tRes.data||[];members=mRes.data||[];tasks=kRes.data||[];memberTeams=mtRes.data||[];projects=pRes.data||[];taskCollabs=tcRes.data||[];reports=rRes.data||[];projectTeams=ptRes.data||[];kpiCatalog=kcRes.data||[];
+  teams=tRes.data||[];members=mRes.data||[];tasks=kRes.data||[];memberTeams=mtRes.data||[];projects=pRes.data||[];taskCollabs=tcRes.data||[];reports=rRes.data||[];projectTeams=ptRes.data||[];kpiCatalog=kcRes.data||[];plans=(plRes.data)||[];
   if(me){me.teamIds=teamIdsOf(me.id);me.leadIds=leadIdsOf(me.id);}
 }
 function projTeamIds(pid){return projectTeams.filter(x=>x.project_id===pid).map(x=>x.team_id);}
 async function reloadProjectsData(){const [p,pt]=await Promise.all([sb.from('projects').select('*').order('created_at'),sb.from('project_teams').select('*')]);projects=p.data||[];projectTeams=pt.data||[];}
 async function reloadReports(){const {data}=await sb.from('monthly_reports').select('*');reports=data||[];}
+async function reloadPlans(){const {data}=await sb.from('plans').select('*').order('sort_order');plans=data||[];}
 async function reloadTasks(){
   const [k,tc]=await Promise.all([sb.from('tasks').select('*').order('due_date',{nullsFirst:false}),sb.from('task_collaborators').select('*')]);
   tasks=k.data||[];taskCollabs=tc.data||[];renderAll();
@@ -951,6 +1005,7 @@ function filtered(){
     else if(drillFilter.type==='overdue')list=list.filter(isOverdue);
     else if(drillFilter.type==='soon')list=list.filter(isSoon);
     else if(drillFilter.type==='needkpi')list=list.filter(needsKpi);
+    else if(drillFilter.type==='plan')list=list.filter(t=>t.plan_id===drillFilter.value);
   }
   return list;
 }
@@ -973,7 +1028,7 @@ function activeFilterChips(){
 }
 
 /* ================= Render ================= */
-function renderAll(){fillFilters();renderDashboard();renderKanban();renderTasks();renderTeams();renderProjects();renderCalendar();renderKPI();renderGantt();renderReport();renderStaff();renderDocs();}
+function renderAll(){fillFilters();renderDashboard();renderKanban();renderTasks();renderTeams();renderProjects();renderCalendar();renderKPI();renderGantt();renderReport();renderStaff();renderDocs();renderPlans();}
 
 function barChart(title,rows){
   const max=Math.max(1,...rows.map(r=>r.count)), total=rows.reduce((a,b)=>a+b.count,0);
@@ -1132,7 +1187,7 @@ function computeKpiHD20(pool){
     parts.forEach(([id,w])=>{const a=acc[id];const sh=P*w;a.denom+=sh;a.total++;if(done){a.dN++;a.dA+=sh;a.dB+=sh*qf;a.dC+=sh*tf;}});
   });
   const base=members.map(m=>{const a=acc[m.id];const A=a.denom?a.dA/a.denom:0,B=a.denom?a.dB/a.denom:0,C=a.denom?a.dC/a.denom:0;
-    return {m,denom:a.denom,dN:a.dN,total:a.total,A,B,C};});
+    return {m,denom:a.denom,dN:a.dN,total:a.total,A,B,C,donePts:a.dA};});
   const leadTeamIds=id=>teams.filter(t=>t.leader_id===id).map(t=>t.id);
   return base.map(r=>{
     const tids=leadTeamIds(r.m.id);const isLeader=tids.length>0;let D=null,kpi;
@@ -1148,20 +1203,86 @@ function computeKpiHD20(pool){
 function renderKpiHD20(pool){
   const rows=computeKpiHD20(pool).filter(r=>r.total>0).sort((a,b)=>b.kpi-a.kpi);
   const pct=x=>Math.round(x*100)+'%';
+  const maxDone=Math.max(1,...rows.map(r=>r.donePts||0));
   $('#kpiHdBody').innerHTML=rows.map(r=>{
     const g=kpiGroup(r.kpi);
+    const top=(r.donePts||0)>0&&(r.donePts||0)===maxDone;
     return `<tr onclick="drillMemberKpi('${r.m.id}')" style="cursor:pointer">
       <td class="tc">${ava(r.m)} ${esc(r.m.full_name)}${r.isLeader?' <span class="chip cat" style="font-size:10px">LĐ</span>':''}</td>
       <td>${r.dN}/${r.total} (${Math.round(r.denom)}đ)</td>
+      <td><b>${Math.round(r.donePts||0)}đ</b>${top?' <span class="chip" style="background:#eda100;color:#fff;font-size:10px">Khối lượng cao nhất</span>':''}</td>
       <td>${pct(r.A)}</td><td>${pct(r.B)}</td><td>${pct(r.C)}</td>
       <td>${r.isLeader?pct(r.D):'<span style="color:var(--muted2)">—</span>'}</td>
       <td><b style="color:${g.c}">${r.kpi}</b></td>
       <td><span class="chip" style="background:${g.c};color:#fff;font-size:11px">${g.l}</span></td></tr>`;
-  }).join('')||'<tr><td colspan="8" class="empty">Chưa có việc nào chấm điểm KPI trong kỳ này. Vào từng nhiệm vụ để chọn “Loại việc (điểm)”, chấm chất lượng &amp; tiến độ.</td></tr>';
+  }).join('')||'<tr><td colspan="9" class="empty">Chưa có việc nào chấm điểm KPI trong kỳ này. Vào từng nhiệm vụ để chọn “Loại việc (điểm)”, chấm chất lượng &amp; tiến độ.</td></tr>';
 }
 window.renderKpiHD20=renderKpiHD20;
 function drillMemberKpi(id){drillFilter=null;$('#filterMember').value=id;$('#filterTeam').value='';$('#filterProject').value='';renderAll();nav('tasks');}
 window.drillMemberKpi=drillMemberKpi;
+
+/* ================= Xuất báo cáo KPI (Excel / Word) ================= */
+function kpiReportMeta(){const scoped=$('#kpiMonth')?.value||'';return {scoped,label:scoped?ymLabel(scoped):'Toàn bộ thời gian',pool:kpiPool()};}
+function kpiReportTables(){
+  const pool=kpiPool();const p=x=>Math.round(x*100);
+  const hd=computeKpiHD20(pool).filter(r=>r.total>0).sort((a,b)=>b.kpi-a.kpi).map(r=>({
+    'Cán bộ':r.m.full_name,'Lãnh đạo':r.isLeader?'x':'','Việc HT/giao':r.dN+'/'+r.total,
+    'Điểm giao':Math.round(r.denom),'Điểm đạt (tuyệt đối)':Math.round(r.donePts||0),
+    'A (%)':p(r.A),'B (%)':p(r.B),'C (%)':p(r.C),'D (%)':r.isLeader?p(r.D):'','KPI':r.kpi,'Xếp nhóm':kpiGroup(r.kpi).l}));
+  const ca=computeKPI(pool).filter(r=>r.total>0).map(r=>({
+    'Thành viên':r.m.full_name,'Tổng NV':r.total,'Hoàn thành':r.done,'Đúng hạn':r.onTime,'Trễ hạn':r.overdue,'Tỉ lệ (%)':r.rate,'Điểm KPI':r.score}));
+  const to=teams.map(tm=>{const tt=pool.filter(x=>x.team_id===tm.id),td=tt.filter(x=>x.status==='done').length;
+    return {'Tổ':tm.name,'Số việc':tt.length,'Hoàn thành':td,'Tỉ lệ HT (%)':tt.length?Math.round(td/tt.length*100):0};}).filter(r=>r['Số việc']>0);
+  const hdAvg=hd.length?Math.round(hd.reduce((a,b)=>a+b.KPI,0)/hd.length):0;
+  const sum=[{'Chỉ tiêu':'KPI trung bình phòng (HD20)','Giá trị':hdAvg},
+    {'Chỉ tiêu':'Số cán bộ có điểm KPI','Giá trị':hd.length},
+    {'Chỉ tiêu':'Tổng việc hoàn thành','Giá trị':pool.filter(t=>t.status==='done').length},
+    {'Chỉ tiêu':'Tổng việc quá hạn','Giá trị':pool.filter(isOverdue).length},
+    {'Chỉ tiêu':'Xếp loại Tốt (≥70)','Giá trị':hd.filter(r=>r.KPI>=70).length},
+    {'Chỉ tiêu':'Xếp loại Đạt (50–69)','Giá trị':hd.filter(r=>r.KPI>=50&&r.KPI<70).length},
+    {'Chỉ tiêu':'Chưa đạt (<50)','Giá trị':hd.filter(r=>r.KPI<50).length}];
+  return {hd,ca,to,sum};
+}
+function exportKpiExcel(){
+  if(typeof XLSX==='undefined'){toast('Thư viện Excel chưa tải xong, vui lòng thử lại','err');return;}
+  const {scoped,label}=kpiReportMeta();const T=kpiReportTables();
+  const wb=XLSX.utils.book_new();
+  const add=(name,rows)=>{const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{'Ghi chú':'(Không có dữ liệu trong kỳ)'}]);XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));};
+  add('Tổng hợp',[{'Báo cáo':'KPI Phòng KHTH — BV 30-4'},{'Kỳ':label},{'Xuất ngày':fmtDMY(todayStr())},{}].concat(T.sum));
+  add('KPI HD20 (cá nhân)',T.hd);
+  add('KPI cá nhân (tỉ lệ)',T.ca);
+  add('KPI theo tổ',T.to);
+  XLSX.writeFile(wb,'BaoCao_KPI_KHTH_'+(scoped||'toanbo')+'.xlsx');
+  toast('Đã xuất Excel','ok');
+}
+function _tbl(title,rows){
+  if(!rows.length)return '<h3>'+title+'</h3><p><i>(Không có dữ liệu trong kỳ)</i></p>';
+  const cols=Object.keys(rows[0]);
+  return '<h3>'+title+'</h3><table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;font-size:10.5pt;width:100%">'
+    +'<thead><tr>'+cols.map(c=>'<th style="background:#dbe5f1">'+esc(c)+'</th>').join('')+'</tr></thead>'
+    +'<tbody>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+esc(''+(r[c]??''))+'</td>').join('')+'</tr>').join('')+'</tbody></table><br/>';
+}
+function exportKpiWord(){
+  const {scoped,label}=kpiReportMeta();const T=kpiReportTables();
+  const html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head>'
+    +'<body style="font-family:\'Times New Roman\',serif;font-size:12pt">'
+    +'<p style="text-align:center;font-weight:bold;margin:0">BỆNH VIỆN 30-4</p>'
+    +'<p style="text-align:center;font-weight:bold;margin:0">PHÒNG KẾ HOẠCH TỔNG HỢP</p>'
+    +'<h2 style="text-align:center">BÁO CÁO KPI '+(scoped?('THÁNG '+esc(label.toUpperCase())):'(TOÀN BỘ THỜI GIAN)')+'</h2>'
+    +'<p><i>Kỳ đánh giá: '+esc(label)+' · Xuất ngày: '+fmtDMY(todayStr())+'</i></p>'
+    +_tbl('I. Tổng hợp chung',T.sum)
+    +_tbl('II. KPI cá nhân theo Hướng dẫn 20 (A·B·C·D)',T.hd)
+    +_tbl('III. KPI cá nhân (tỉ lệ hoàn thành)',T.ca)
+    +_tbl('IV. KPI theo tổ',T.to)
+    +'<p style="margin-top:16px;font-size:11pt"><i>Ghi chú: KPI% là tỉ lệ đạt/giao, không phản ánh khối lượng &amp; độ khó; cột "Điểm đạt (tuyệt đối)" phản ánh khối lượng thực. Khi phân nhóm cần đọc cả hai (Mục 5.1 Hướng dẫn 20).</i></p>'
+    +'<br/><table style="width:100%;font-weight:bold"><tr><td style="text-align:center">NGƯỜI LẬP BÁO CÁO</td><td style="text-align:center">TRƯỞNG PHÒNG</td></tr></table>'
+    +'</body></html>';
+  const blob=new Blob(['﻿'+html],{type:'application/msword'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='BaoCao_KPI_KHTH_'+(scoped||'toanbo')+'.doc';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('Đã xuất Word','ok');
+}
+window.exportKpiExcel=exportKpiExcel;window.exportKpiWord=exportKpiWord;
+
 function renderDashboard(){
   const done=tasks.filter(t=>t.status==='done').length;
   const od=tasks.filter(isOverdue).length, soon=tasks.filter(isSoon).length, doing=tasks.filter(t=>t.status==='doing').length;
@@ -1746,6 +1867,155 @@ async function deleteProject(){
   await reloadTasks();$('#projModal').classList.remove('show');toast('Đã xóa dự án','ok');
 }
 
+/* ================= Kế hoạch & Chỉ tiêu ================= */
+let editPlanId=null;
+const PLEVEL={bv:{l:'Bệnh viện',ic:'🏥',c:'#2a78d6'},phong:{l:'Phòng KHTH',ic:'🏢',c:'#7a5af8'},canhan:{l:'Cá nhân',ic:'👤',c:'#1a9e6a'}};
+function planYears(){const ys=new Set(plans.map(p=>p.year).filter(Boolean));ys.add(new Date().getFullYear());return [...ys].sort((a,b)=>b-a);}
+function planPeriodLabel(p){
+  if(p.period==='quy')return 'Quý '+(p.quarter||'?')+'/'+(p.year||'');
+  if(p.period==='thang')return 'Tháng '+(p.month||'?')+'/'+(p.year||'');
+  if(p.period==='tuan')return 'Tuần '+(p.week||'?')+'/'+(p.year||'');
+  return 'Năm '+(p.year||'');
+}
+function planOwnerName(p){return p.owner_id?(member(p.owner_id)?.full_name||'—'):'';}
+function planTasksOf(pid){return tasks.filter(t=>t.plan_id===pid);}
+function planProgress(p){
+  if(p.progress_mode==='manual'){
+    const tg=+p.target||0, ac=+p.achieved||0, u=p.unit?(' '+p.unit):'';
+    const pct=tg>0?Math.round(ac/tg*100):(ac>0?100:0);
+    return {pct:Math.max(0,Math.min(100,pct)),text:(p.achieved??0)+u+' / '+(p.target??0)+u,mode:'Nhập tay'};
+  }
+  const pt=planTasksOf(p.id),done=pt.filter(t=>t.status==='done').length;
+  return {pct:pt.length?Math.round(done/pt.length*100):0,text:done+'/'+pt.length+' việc',mode:'Từ nhiệm vụ'};
+}
+function planStateBadge(p){
+  const pr=planProgress(p);
+  if(p.status==='done'||pr.pct>=100)return {k:'done',html:'<span class="chip b-done">Hoàn thành</span>'};
+  if(p.status==='paused')return {k:'paused',html:'<span class="chip b-hoan">Tạm dừng</span>'};
+  const dl=p.due_date?daysLeft(p.due_date):null;
+  if(dl!=null&&dl<0)return {k:'late',html:'<span class="chip pri-cao">🔴 Quá hạn '+Math.abs(dl)+' ngày</span>'};
+  if(dl!=null&&dl<=14&&pr.pct<50)return {k:'behind',html:'<span class="chip pri-trung">🟠 Chậm · còn '+dl+' ngày</span>'};
+  return {k:'ontrack',html:'<span class="chip b-doing">Đang thực hiện</span>'};
+}
+function canEditPlan(p){return !!me&&(p?(p.creator_id===me.id||p.owner_id===me.id||canManageTask()):true);}
+function planSort(a,b){return (a.sort_order-b.sort_order)||(a.id-b.id);}
+function renderPlans(){
+  const yr=$('#planYear');
+  if(yr){const cur=yr.value;const ys=planYears();yr.innerHTML='<option value="">Tất cả năm</option>'+ys.map(y=>`<option value="${y}">Năm ${y}</option>`).join('');
+    yr.value=(cur&&[...yr.options].some(o=>o.value===cur))?cur:String(new Date().getFullYear());}
+  const own=$('#planOwner');if(own){const curo=own.value;own.innerHTML='<option value="">Tất cả người</option>'+members.map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('');own.value=curo;}
+  $('#btnNewPlan').style.display=me?'inline-flex':'none';
+  const fy=yr?yr.value:'',fl=$('#planLevel').value,fp=$('#planPeriod').value,fo=$('#planOwner').value;
+  let list=plans.filter(p=>(!fy||String(p.year)===fy)&&(!fl||p.level===fl)&&(!fp||p.period===fp)&&(!fo||p.owner_id===fo));
+  const late=list.filter(p=>['late','behind'].includes(planStateBadge(p).k));
+  $('#planNudge').innerHTML=late.length?`<div style="background:var(--amberbg);border:1px solid var(--amber);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--txt)">⏰ <b>${late.length} chỉ tiêu/kế hoạch cần đôn đốc</b> (quá hạn hoặc chậm tiến độ so với hạn).</div>`:'';
+  if(!list.length){$('#plansView').innerHTML='<div class="empty" style="padding:20px">Chưa có kế hoạch/chỉ tiêu nào khớp bộ lọc'+(me?'. Bấm “＋ Thêm chỉ tiêu/kế hoạch”.':'')+'</div>';return;}
+  const byId={};list.forEach(p=>byId[p.id]=p);
+  const childrenOf=pid=>list.filter(p=>p.parent_id===pid).sort(planSort);
+  let html='';
+  ['bv','phong','canhan'].forEach(lvl=>{
+    const inLvl=list.filter(p=>p.level===lvl);if(!inLvl.length)return;
+    const meta=PLEVEL[lvl];
+    html+=`<div class="section-title" style="margin-top:14px">${meta.ic} ${meta.l} · ${inLvl.length} mục</div><div class="card" style="padding:4px 8px">`;
+    const seen=new Set();
+    const roots=inLvl.filter(p=>!p.parent_id||!byId[p.parent_id]).sort(planSort);
+    (function walk(arr,depth){arr.forEach(p=>{if(seen.has(p.id))return;seen.add(p.id);html+=planRowHtml(p,depth);walk(childrenOf(p.id).filter(c=>c.level===lvl),depth+1);});})(roots,0);
+    inLvl.filter(p=>!seen.has(p.id)).forEach(p=>{seen.add(p.id);html+=planRowHtml(p,0);});
+    html+='</div>';
+  });
+  $('#plansView').innerHTML=html;
+}
+function planRowHtml(p,depth){
+  const pr=planProgress(p),st=planStateBadge(p),meta=PLEVEL[p.level]||PLEVEL.phong;
+  const barc=st.k==='late'?'var(--red)':st.k==='behind'?'#eda100':(pr.pct>=100?'var(--green)':meta.c);
+  const par=p.parent_id?plans.find(x=>x.id===p.parent_id):null;
+  const parTxt=(par&&par.level!==p.level)?` · <span style="color:var(--muted2)">↑ thuộc: ${esc(par.title)}</span>`:'';
+  return `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line);margin-left:${depth*20}px">
+    <div style="flex:1;min-width:0;cursor:pointer" onclick="drillPlan(${p.id})">
+      <div style="font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${depth?'↳ ':''}${esc(p.title)}</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${planPeriodLabel(p)}${p.owner_id?' · '+esc(planOwnerName(p)):''}${p.source?' · 📄 '+esc(p.source):''}${p.due_date?' · hạn '+fmtDMY(p.due_date):''} · <span style="color:var(--muted2)">${pr.mode}</span>${parTxt}</div>
+    </div>
+    <div style="width:150px;flex:0 0 auto">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>${esc(pr.text)}</span><b>${pr.pct}%</b></div>
+      <div class="bar" style="margin-top:2px"><i style="width:${pr.pct}%;background:${barc}"></i></div>
+    </div>
+    <div style="width:150px;flex:0 0 auto;text-align:right">${st.html}</div>
+    ${canEditPlan(p)?`<button class="btn sm" onclick="event.stopPropagation();openPlan(${p.id})">✏️</button>`:'<span style="width:24px;display:inline-block"></span>'}
+  </div>`;
+}
+function drillPlan(id){$('#filterMember').value='';$('#filterTeam').value='';$('#filterProject').value='';$('#search').value='';drillFilter={type:'plan',value:id,label:'Kế hoạch: '+(plans.find(p=>p.id===id)?.title||'')};renderAll();nav('tasks');}
+window.drillPlan=drillPlan;
+
+/* Cập nhật hiển thị theo period trong modal kế hoạch */
+function planPeriodBoxes(){
+  const per=$('#plPeriod').value;
+  $('#plQuarterWrap').style.display=per==='quy'?'':'none';
+  $('#plMonthWrap').style.display=per==='thang'?'':'none';
+  $('#plWeekWrap').style.display=per==='tuan'?'':'none';
+}
+function planModeBoxes(){$('#plAchievedWrap').style.display=$('#plMode').value==='manual'?'':'none';}
+function openPlan(id){
+  const p=id?plans.find(x=>x.id===id):null;
+  if(id&&!canEditPlan(p)){toast('Bạn không có quyền sửa mục này','err');return;}
+  editPlanId=id;
+  $('#plmTitle').textContent=p?'Sửa chỉ tiêu / kế hoạch':'Thêm chỉ tiêu / kế hoạch';
+  const defLevel=canManageTask()?'phong':'canhan';
+  $('#plTitle').value=p?.title||'';
+  $('#plLevel').value=p?.level||defLevel;
+  $('#plPeriod').value=p?.period||'nam';
+  $('#plYear').value=p?.year||new Date().getFullYear();
+  $('#plQuarter').value=p?.quarter||1;$('#plMonth').value=p?.month||(new Date().getMonth()+1);$('#plWeek').value=p?.week||'';
+  // owner list
+  $('#plOwner').innerHTML='<option value="">— Chọn cán bộ —</option>'+members.map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('');
+  $('#plOwner').value=p?.owner_id||((defLevel==='canhan'&&!p)?(me?.id||''):'')||'';
+  // parent list: các chỉ tiêu cấp cao hơn (bv, phong) cùng năm
+  const yr=p?.year||new Date().getFullYear();
+  const parents=plans.filter(x=>x.id!==id&&['bv','phong'].includes(x.level));
+  $('#plParent').innerHTML='<option value="">— Không thuộc chỉ tiêu cấp trên —</option>'+parents.map(x=>`<option value="${x.id}">${PLEVEL[x.level].ic} ${esc(x.title)} (${planPeriodLabel(x)})</option>`).join('');
+  $('#plParent').value=p?.parent_id||'';
+  $('#plUnit').value=p?.unit||'';$('#plTarget').value=(p?.target??'');$('#plAchieved').value=(p?.achieved??'');
+  $('#plMode').value=p?.progress_mode||'auto';
+  $('#plSource').value=p?.source||'';$('#plDue').value=p?.due_date||'';$('#plStatus').value=p?.status||'active';$('#plNote').value=p?.note||'';
+  planPeriodBoxes();planModeBoxes();
+  $('#plOwner').closest('.field').style.display=($('#plLevel').value==='canhan')?'':'none';
+  $('#plmDelete').style.display=p&&canEditPlan(p)?'inline-flex':'none';
+  $('#planModal').classList.add('show');
+}
+window.openPlan=openPlan;
+async function savePlan(){
+  const title=$('#plTitle').value.trim();if(!title){toast('Nhập tên chỉ tiêu/kế hoạch','err');return;}
+  const level=$('#plLevel').value, period=$('#plPeriod').value;
+  const obj={title,level,period,
+    year:parseInt($('#plYear').value)||null,
+    quarter:period==='quy'?(parseInt($('#plQuarter').value)||null):null,
+    month:period==='thang'?(parseInt($('#plMonth').value)||null):null,
+    week:period==='tuan'?(parseInt($('#plWeek').value)||null):null,
+    owner_id:level==='canhan'?($('#plOwner').value||null):null,
+    parent_id:$('#plParent').value?+$('#plParent').value:null,
+    unit:$('#plUnit').value.trim()||null,
+    target:$('#plTarget').value!==''?+$('#plTarget').value:null,
+    achieved:$('#plAchieved').value!==''?+$('#plAchieved').value:null,
+    progress_mode:$('#plMode').value,
+    source:$('#plSource').value.trim()||null,
+    due_date:$('#plDue').value||null,
+    status:$('#plStatus').value,
+    note:$('#plNote').value.trim()||null};
+  if(level==='canhan'&&!obj.owner_id){toast('Kế hoạch cá nhân cần chọn cán bộ phụ trách','err');return;}
+  $('#plmSave').disabled=true;
+  try{
+    if(editPlanId){const {error}=await sb.from('plans').update(obj).eq('id',editPlanId);if(error)throw error;}
+    else{obj.creator_id=me.id;const {error}=await sb.from('plans').insert(obj);if(error)throw error;}
+    await reloadPlans();$('#planModal').classList.remove('show');renderPlans();syncCombos&&syncCombos();toast('Đã lưu kế hoạch','ok');
+  }catch(err){toast('Lỗi: '+(err.message||err),'err');}
+  $('#plmSave').disabled=false;
+}
+async function deletePlan(){
+  if(!editPlanId||!confirm('Xóa mục kế hoạch này? Nhiệm vụ đã gắn sẽ được gỡ khỏi kế hoạch (không bị xóa).'))return;
+  const {error}=await sb.from('plans').delete().eq('id',editPlanId);
+  if(error){toast('Lỗi: '+error.message,'err');return;}
+  await reloadPlans();await reloadTasks();$('#planModal').classList.remove('show');renderPlans();toast('Đã xóa','ok');
+}
+
 /* ================= Team (Tổ) modal ================= */
 let editTeamId=null;
 function leaderCandidates(){return members.filter(m=>['truong_phong','pho_truong_phong'].includes(m.role));}
@@ -1789,6 +2059,8 @@ function fillTaskSelects(allowTeamId){
   $('#fProject').innerHTML='<option value="">— Không thuộc dự án —</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   $('#fAssignee').innerHTML='<option value="">— Chưa giao —</option>'+members.map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('');
   $('#fLeader').innerHTML='<option value="">— Chưa phân —</option>'+leaderCandidates().map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('');
+  const plOpt=lvl=>plans.filter(p=>p.level===lvl).sort(planSort).map(p=>`<option value="${p.id}">${PLEVEL[lvl].ic} ${esc(p.title)} (${planPeriodLabel(p)}${p.owner_id?' · '+esc(planOwnerName(p)):''})</option>`).join('');
+  $('#fPlan').innerHTML='<option value="">— Không gắn kế hoạch —</option>'+plOpt('bv')+plOpt('phong')+plOpt('canhan');
 }
 async function openTask(id){
   const t=id?tasks.find(x=>x.id===id):null;
@@ -1803,13 +2075,14 @@ async function openTask(id){
   $('#fTeam').value=t?.team_id||(myLeadIds()[0]||me.teamIds?.[0]||teams[0]?.id||'');
   $('#fProject').value=t?.project_id||'';
   $('#fAssignee').value=t?.assignee_id||'';$('#fLeader').value=t?.leader_id||'';$('#fStatus').value=t?.status||'todo';
+  $('#fPlan').value=t?.plan_id||'';
   $('#fPriority').value=t?.priority||'trung';$('#fStart').value=t?.start_date||'';$('#fDue').value=t?.due_date||'';$('#fProgress').value=t?.progress??0;
   const editable=t?canEdit(t):canCreate();
   // Nhân viên tự tạo việc mới: khóa "Chịu trách nhiệm chính" = chính mình, không giao cho người khác
   const lockAssignee=!t&&editable&&!canAssignOthers();
   // Nhân viên tự tạo việc VẪN chọn được "Người phối hợp" (họ là người phụ trách nên có quyền)
   renderCollabChecks(t?collabIdsOf(id):[], !editable);
-  ['fTitle','fDesc','fTeam','fAssignee','fLeader','fStatus','fPriority','fStart','fDue','fProgress'].forEach(f=>$('#'+f).disabled=!editable);
+  ['fTitle','fDesc','fTeam','fAssignee','fLeader','fStatus','fPriority','fStart','fDue','fProgress','fPlan'].forEach(f=>$('#'+f).disabled=!editable);
   fillKpiFields(t,editable);
   fillDocFields(t,editable);
   if(lockAssignee){$('#fAssignee').value=me.id;$('#fAssignee').disabled=true;}
@@ -1901,7 +2174,7 @@ async function saveTask(){
   const oldCat=editId?(tasks.find(t=>t.id===editId)?.category||null):null;
   const hasDoc=$('#fHasDoc').checked;
   const obj={title,description:$('#fDesc').value.trim(),team_id:+$('#fTeam').value||null,project_id:+$('#fProject').value||null,category:kc?kc.name:oldCat,
-    assignee_id:$('#fAssignee').value||null,leader_id:$('#fLeader').value||null,status:st,priority:$('#fPriority').value,start_date:$('#fStart').value||null,due_date:$('#fDue').value||null,progress:prog,
+    assignee_id:$('#fAssignee').value||null,leader_id:$('#fLeader').value||null,plan_id:$('#fPlan').value?+$('#fPlan').value:null,status:st,priority:$('#fPriority').value,start_date:$('#fStart').value||null,due_date:$('#fDue').value||null,progress:prog,
     kpi_points:(kpiP===''?null:Math.max(0,Math.min(100,parseInt(kpiP)||0))),kpi_quality:$('#fKpiQuality').value||null,kpi_time:$('#fKpiTime').value||null,
     doc_in_no:hasDoc?($('#fDocInNo').value.trim()||null):null,doc_in_signed:hasDoc?($('#fDocInSigned').value||null):null,doc_in_date:hasDoc?($('#fDocInDate').value||null):null,doc_in_summary:hasDoc?($('#fDocInSummary').value.trim()||null):null,doc_in_url:hasDoc?($('#fDocInUrl').value.trim()||null):null,
     doc_out_no:hasDoc?($('#fDocOutNo').value.trim()||null):null,doc_out_date:hasDoc?($('#fDocOutDate').value||null):null,doc_out_url:hasDoc?($('#fDocOutUrl').value.trim()||null):null};
@@ -2389,7 +2662,7 @@ function requestNotifPerm(){
 
 
 /* ================= Navigation & wiring ================= */
-const TITLES={dashboard:'Tổng quan',kanban:'Bảng Kanban',tasks:'Danh sách nhiệm vụ',teams:'Công việc theo tổ',projects:'Dự án',calendar:'Lịch công việc',kpi:'KPI & Thống kê',report:'Báo cáo tháng',gantt:'Sơ đồ Gantt',docs:'Sổ văn bản đến/đi',staff:'Danh sách nhân sự'};
+const TITLES={dashboard:'Tổng quan',kanban:'Bảng Kanban',tasks:'Danh sách nhiệm vụ',teams:'Công việc theo tổ',projects:'Dự án',calendar:'Lịch công việc',kpi:'KPI & Thống kê',report:'Báo cáo tháng',gantt:'Sơ đồ Gantt',plans:'Kế hoạch & Chỉ tiêu',docs:'Sổ văn bản đến/đi',staff:'Danh sách nhân sự'};
 function nav(v){$$('.nav-item[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));$$('.view').forEach(s=>s.classList.remove('active'));$('#view-'+v).classList.add('active');$('#viewTitle').textContent=TITLES[v];$('#sidebar').classList.remove('open');}
 window.nav=nav;
 
@@ -2426,7 +2699,7 @@ function enhanceSelect(sel){
 }
 function syncCombos(){_combos.forEach(s=>s._comboRefresh&&s._comboRefresh());}
 window.syncCombos=syncCombos;
-['filterTeam','filterMember','filterProject','fTeam','fProject','fAssignee','fLeader','fKpiCat','ganttProject'].forEach(id=>{const el=$('#'+id);if(el)enhanceSelect(el);});
+['filterTeam','filterMember','filterProject','fTeam','fProject','fAssignee','fLeader','fKpiCat','fPlan','ganttProject','planOwner'].forEach(id=>{const el=$('#'+id);if(el)enhanceSelect(el);});
 
 $$('.nav-item[data-view]').forEach(b=>b.onclick=()=>nav(b.dataset.view));
 $('#menuBtn').onclick=()=>$('#sidebar').classList.toggle('open');
@@ -2438,7 +2711,18 @@ $('#btnNew').onclick=()=>openTask(null);
 $('#search').oninput=()=>{renderKanban();renderTasks();renderTeams();renderCalendar();renderGantt();};
 $('#filterTeam').onchange=$('#filterMember').onchange=$('#filterProject').onchange=renderAll;
 $('#kpiMonth')&&($('#kpiMonth').onchange=renderKPI);
+$('#btnKpiExcel')&&($('#btnKpiExcel').onclick=exportKpiExcel);
+$('#btnKpiWord')&&($('#btnKpiWord').onclick=exportKpiWord);
 $('#btnNewProject').onclick=()=>openProject(null);
+$('#btnNewPlan')&&($('#btnNewPlan').onclick=()=>openPlan(null));
+$('#plmClose')&&($('#plmClose').onclick=$('#plmCancel').onclick=()=>$('#planModal').classList.remove('show'));
+$('#plmSave')&&($('#plmSave').onclick=savePlan);
+$('#plmDelete')&&($('#plmDelete').onclick=deletePlan);
+$('#planModal')&&($('#planModal').onclick=e=>{if(e.target.id==='planModal')$('#planModal').classList.remove('show');});
+$('#plPeriod')&&($('#plPeriod').onchange=planPeriodBoxes);
+$('#plMode')&&($('#plMode').onchange=planModeBoxes);
+$('#plLevel')&&($('#plLevel').onchange=()=>{const cn=$('#plLevel').value==='canhan';$('#plOwner').closest('.field').style.display=cn?'':'none';});
+['planYear','planLevel','planPeriod','planOwner'].forEach(id=>{const el=$('#'+id);if(el)el.onchange=renderPlans;});
 $('#pmClose').onclick=$('#pmCancel').onclick=()=>$('#projModal').classList.remove('show');
 $('#pmSave').onclick=saveProject;$('#pmDelete').onclick=deleteProject;
 $('#projModal').onclick=e=>{if(e.target.id==='projModal')$('#projModal').classList.remove('show');};
@@ -2453,7 +2737,7 @@ $('#calPrev').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCalendar
 $('#calNext').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCalendar();};
 $('#calToday').onclick=()=>{calDate=new Date();renderCalendar();};
 $('#subInput')&&($('#subInput').onkeydown=e=>{if(e.key==='Enter')$('#subAdd').click();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');$('#teamModal').classList.remove('show');$('#profileModal').classList.remove('show');$('#staffDetailModal').classList.remove('show');$('#reviewModal').classList.remove('show');$('#dayModal').classList.remove('show');$('#kpiCatModal').classList.remove('show');}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeTask();$('#staffModal').classList.remove('show');$('#projModal').classList.remove('show');$('#addUserModal').classList.remove('show');$('#passModal').classList.remove('show');$('#teamModal').classList.remove('show');$('#profileModal').classList.remove('show');$('#staffDetailModal').classList.remove('show');$('#reviewModal').classList.remove('show');$('#dayModal').classList.remove('show');$('#kpiCatModal').classList.remove('show');$('#planModal').classList.remove('show');}});
 
 /* ================= Start ================= */
 async function start(){
