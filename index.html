@@ -37,12 +37,12 @@
   html[data-theme="light"] .chip.due.od,html[data-theme="light"] .cal-ev.od{color:#c22745}
   html[data-theme="light"] .chip.due.sn,html[data-theme="light"] .cal-ev.sn{color:#8a5a00}
   html[data-theme="light"] .cal-ev.dn{color:#1a7a50}
-  html[data-theme="light"] .badge.b-todo{background:#e6ebf3;color:#46566f}
-  html[data-theme="light"] .badge.b-doing{background:#e3f0fb;color:#1c6fb8}
-  html[data-theme="light"] .badge.b-review{background:#efe8fb;color:#6f42c1}
-  html[data-theme="light"] .badge.b-done{background:#e2f6ec;color:#1a7a50}
-  html[data-theme="light"] .badge.b-hoan{background:#fdf0d5;color:#8a5a00}
-  html[data-theme="light"] .badge.b-huy{background:#f0f1f4;color:#8a94a6}
+  html[data-theme="light"] .badge.b-todo{background:#eef1f6;color:#475569}
+  html[data-theme="light"] .badge.b-doing{background:#e0f2fe;color:#0369a1}
+  html[data-theme="light"] .badge.b-review{background:#f3e8ff;color:#7c3aed}
+  html[data-theme="light"] .badge.b-done{background:#d1fae5;color:#047857}
+  html[data-theme="light"] .badge.b-hoan{background:#fef3c7;color:#b45309}
+  html[data-theme="light"] .badge.b-huy{background:#dbe0e8;color:#334155}
   html[data-theme="light"] .role-badge.rb-admin{background:#fcefcf;color:#8a5a00}
   html[data-theme="light"] .role-badge.rb-tp{background:#efe6fb;color:#6a3db0}
   html[data-theme="light"] .role-badge.rb-pho{background:#fceadd;color:#b45716}
@@ -168,7 +168,7 @@
   .row-od td{background:linear-gradient(90deg,var(--redbg),transparent 60%)!important}
   .row-od td.tc{color:#ff90a5}.row-dn td.tc{text-decoration:line-through;color:var(--muted)}
   .badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700}
-  .b-todo{background:#2a3550;color:#b9c6e6}.b-doing{background:#12324a;color:#7fc7ff}.b-review{background:#241a3a;color:#c3a6ff}.b-done{background:var(--greenbg);color:#6ee7b0}.b-hoan{background:#3a2f16;color:#f0c674}.b-huy{background:#2b3040;color:#9aa7c2}
+  .b-todo{background:#28313f;color:#9fb0c4}.b-doing{background:#0c3350;color:#7dd3fc}.b-review{background:#2a2145;color:#c4b5fd}.b-done{background:#0d3a2c;color:#6ee7b7}.b-hoan{background:#3a2c12;color:#fcd34d}.b-huy{background:#1c2531;color:#7c899b}
   .mini-bar{height:7px;border-radius:5px;background:var(--line);overflow:hidden;width:100px;display:inline-block;vertical-align:middle}
   .mini-bar>i{display:block;height:100%;background:var(--accent)}
 
@@ -781,7 +781,7 @@ let teams=[], members=[], tasks=[], memberTeams=[], projects=[], taskCollabs=[],
 let editId=null, cmtChannel=null, taskChannel=null, editProjId=null;
 const AV=['#3b82f6','#31c48d','#f5a524','#a878ff','#33c9dc','#f2506e','#ff8c42','#4dd0a0','#9b6dff','#ff6b9d'];
 
-const STATUS={todo:{label:'Cần làm',color:'#7c8bb0',cls:'b-todo'},doing:{label:'Đang làm',color:'#3b82f6',cls:'b-doing'},review:{label:'Đang duyệt',color:'#a878ff',cls:'b-review'},done:{label:'Hoàn thành',color:'#31c48d',cls:'b-done'},hoan:{label:'Hoãn',color:'#eda100',cls:'b-hoan'},huy:{label:'Hủy',color:'#8a94a6',cls:'b-huy'}};
+const STATUS={todo:{label:'Cần làm',color:'#64748b',cls:'b-todo'},doing:{label:'Đang làm',color:'#0ea5e9',cls:'b-doing'},review:{label:'Đang duyệt',color:'#8b5cf6',cls:'b-review'},done:{label:'Hoàn thành',color:'#10b981',cls:'b-done'},hoan:{label:'Hoãn',color:'#f59e0b',cls:'b-hoan'},huy:{label:'Hủy',color:'#334155',cls:'b-huy'}};
 const PRI={cao:{label:'Cao',cls:'pri-cao'},trung:{label:'Trung bình',cls:'pri-trung'},thap:{label:'Thấp',cls:'pri-thap'}};
 // KPI theo Hướng dẫn 20: mức chất lượng (B) & tiến độ (C) kèm hệ số điểm
 const QUAL={exceed:{l:'Vượt mức (120%)',p:1.2},ok:{l:'Đảm bảo (100%)',p:1.0},r1:{l:'Sửa 1 lần (75%)',p:0.75},r24:{l:'Sửa 2–4 lần (50%)',p:0.5},r56:{l:'Sửa 5–6 lần (25%)',p:0.25},r7:{l:'Sửa ≥7 lần (0%)',p:0}};
