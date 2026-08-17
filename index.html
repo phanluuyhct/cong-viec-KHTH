@@ -1747,6 +1747,8 @@ function ganttPeriod(val){
   if(/^\d{4}-\d{2}$/.test(val)){const[yy,mm]=val.split('-').map(Number);return {s:mk(yy,mm-1,1),e:mk(yy,mm,0)};}
   return null;
 }
+let ganttShowDone=false;
+window.toggleGanttDone=()=>{ganttShowDone=!ganttShowDone;renderGantt();};
 function renderGantt(){
   // Bộ chọn kỳ thời gian (giữ lựa chọn hiện tại)
   const rgs=$('#ganttRange');
@@ -1764,11 +1766,11 @@ function renderGantt(){
   const inPeriod=r=>!period||(r.s.getTime()<=period.e&&r.e.getTime()>=period.s); // việc chồng lấn kỳ đã chọn
   let rows0;
   if(isProj){
-    rows0=projects.map(p=>{const {s,e}=projRange(p);if(!s&&!e)return null;return {label:p.name,s:new Date(s),e:new Date(e),color:p.color||'#3b82f6',click:`openProject(${p.id})`,od:false,prio:'trung'};}).filter(Boolean).filter(inPeriod);
+    rows0=projects.map(p=>{const {s,e}=projRange(p);if(!s&&!e)return null;return {label:p.name,s:new Date(s),e:new Date(e),color:p.color||'#3b82f6',click:`openProject(${p.id})`,od:false,prio:'trung',status:'proj'};}).filter(Boolean).filter(inPeriod);
     if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Không có dự án nào trong kỳ đã chọn.<br>Thử đổi “kỳ thời gian” sang Toàn bộ, hoặc điền ngày cho dự án.</div>';return;}
   }else{
     // Áp dụng bộ lọc chung (tổ / người / dự án / tìm kiếm) + lọc theo dự án của Gantt + lọc theo tình trạng + lọc theo kỳ
-    rows0=filtered().filter(t=>(!pid||String(t.project_id)===pid)&&(!gstatus||t.status===gstatus)).map(t=>{const s=t.start_date||t.due_date,e=t.due_date||t.start_date;if(!s&&!e)return null;return {label:t.title,s:new Date(s),e:new Date(e),color:STATUS[t.status].color,click:`openTask(${t.id})`,od:isOverdue(t),prio:t.priority||'trung'};}).filter(Boolean).filter(inPeriod);
+    rows0=filtered().filter(t=>(!pid||String(t.project_id)===pid)&&(!gstatus||t.status===gstatus)).map(t=>{const s=t.start_date||t.due_date,e=t.due_date||t.start_date;if(!s&&!e)return null;return {label:t.title,s:new Date(s),e:new Date(e),color:STATUS[t.status].color,click:`openTask(${t.id})`,od:isOverdue(t),prio:t.priority||'trung',status:t.status};}).filter(Boolean).filter(inPeriod);
     if(!rows0.length){$('#ganttView').innerHTML='<div class="empty" style="padding:20px">Không có nhiệm vụ nào trong kỳ đã chọn (và khớp bộ lọc).<br>Thử đổi “kỳ thời gian” sang Toàn bộ, hoặc bỏ bớt bộ lọc.</div>';return;}
   }
   // Trục thời gian: nếu chọn kỳ thì căn theo kỳ (tránh 1 việc dài kéo giãn cả biểu đồ); nếu Toàn bộ thì theo dữ liệu
@@ -1791,7 +1793,7 @@ function renderGantt(){
   const axisLabels=months.map((m,i)=>{const l=pctOf(m.getTime());const yr=(m.getMonth()===0||i===0)?('/'+m.getFullYear()):'';return `<span style="position:absolute;left:${l}%;font-size:10.5px;color:var(--muted);white-space:nowrap;border-left:1px solid var(--line2);padding-left:3px;top:0">Th${m.getMonth()+1}${yr}</span>`;}).join('');
   const gridLines=months.map(m=>`<div style="position:absolute;left:${pctOf(m.getTime())}%;top:0;bottom:0;width:1px;background:var(--line2)"></div>`).join('');
   const header=`<div style="display:flex;gap:${GAP}px;margin-bottom:6px"><div style="width:${LABELW}px;flex:0 0 ${LABELW}px"></div><div style="flex:1;position:relative;height:16px;min-width:200px">${axisLabels}</div></div>`;
-  const body=rows0.map(r=>{
+  const rowHtml=r=>{
     const left=pctOf(r.s.getTime()), width=Math.max(1.2,(r.e.getTime()-r.s.getTime())/span*100);
     const rng=fmtDate(iso(r.s.getTime()))+' → '+fmtDate(iso(r.e.getTime()));
     return `<div style="display:flex;align-items:center;gap:${GAP}px;padding:4px 0;border-bottom:1px solid var(--line)">
@@ -1800,9 +1802,19 @@ function renderGantt(){
         ${gridLines}
         <div onclick="${r.click}" title="${esc(r.label)} · ${rng}" style="position:absolute;left:${left}%;width:${width}%;top:3px;height:16px;background:${r.color};border-radius:4px;cursor:pointer;z-index:1;${r.od?'box-shadow:0 0 0 2px var(--red)':''}"></div>
       </div></div>`;
-  }).join('');
+  };
+  // Mặc định: chỉ hiện việc đang thực hiện; việc đã hoàn thành gom vào mục thu gọn phía dưới.
+  // (Khi lọc theo một tình trạng cụ thể hoặc xem dự án thì hiện tất cả, không tách.)
+  const splitDone=!isProj&&!gstatus;
+  const activeRows=splitDone?rows0.filter(r=>r.status!=='done'):rows0;
+  const doneRows=splitDone?rows0.filter(r=>r.status==='done'):[];
+  const body=activeRows.map(rowHtml).join('')||'<div style="padding:14px;color:var(--muted);font-size:13px">Không có việc đang thực hiện trong kỳ. Việc đã hoàn thành xem ở mục phía dưới.</div>';
+  const doneSection=doneRows.length?`<div style="margin-top:8px;border-top:2px solid var(--line2)">
+      <div onclick="toggleGanttDone()" style="cursor:pointer;padding:9px 2px;font-weight:700;font-size:13px;color:var(--muted);user-select:none">${ganttShowDone?'▾':'▸'} ✅ Đã hoàn thành (${doneRows.length}) — bấm để ${ganttShowDone?'ẩn':'xem'}</div>
+      <div style="display:${ganttShowDone?'block':'none'}">${doneRows.map(rowHtml).join('')}</div>
+    </div>`:'';
   const legend=isProj?'':`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)">${['todo','doing','review','done','hoan','huy'].map(s=>`<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:${STATUS[s].color};display:inline-block"></i>${STATUS[s].label}</span>`).join('')}</div>`;
-  $('#ganttView').innerHTML=header+body+legend;
+  $('#ganttView').innerHTML=header+body+doneSection+legend;
   if(window.syncCombos)syncCombos();
 }
 $('#ganttProject')&&($('#ganttProject').onchange=renderGantt);
